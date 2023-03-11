@@ -9,7 +9,7 @@ use Config::Tiny;
 use Data::Dumper;
 use Time::Out qw(timeout);
 #binmode STDOUT, ':utf8';
-$mpv = "mpv";
+$mpv = "mpv --hr-seek=no";
 $sl = 'streamlink';
 $config = Config::Tiny->read("$ENV{'HOME'}/.config/kp/kp.conf") or die;
 
@@ -73,7 +73,7 @@ if($resume == 1)
 	chomp $input;
 	$input =~ s/\ /+/g;
 	if($input eq "!new"){
-	    _curl("v1/items/fresh?type=movie");
+	    _curl("v1/items/hot?type=movie");
  	    $items = $apiresp->{'pagination'}->{'perpage'};
 	} else {
 	    _curl("v1/items/search?q='$input'&perpage=200");
@@ -93,6 +93,7 @@ if($resume == 1)
 		print " \($apiresp->{'items'}[$a]{'year'}\)" if($apiresp->{'items'}[$a]{'year'});
 		print ", IMDB: $apiresp->{'items'}[$a]{'imdb_rating'}" if($apiresp->{'items'}[$a]{'imdb_rating'});
 		print ", Kinopoisk: $apiresp->{'items'}[$a]{'kinopoisk_rating'}" if($apiresp->{'items'}[$a]{'kinopoisk_rating'});
+		print ", Kinopub: $apiresp->{'items'}[$a]{'rating'}" if($apiresp->{'items'}[$a]{'rating'});
 		print "\n";
 		$a++;
 	    }
@@ -211,7 +212,8 @@ sub _start {
     }
     if ($serial == 0) {
 	$time_c = 0;
-	$time_c = $apiresp_s_sezonami->{'item'}->{'videos'}[$ver-1]->{'watching'}->{'time'};
+#print "Время, записанное в апи: $apiresp_s_sezonami->{'item'}->{'videos'}[$ver-1]->{'watching'}->{'time'}, а общее - $apiresp_s_sezonami->{'item'}->{'videos'}[$ver-1]->{'duration'}";
+	$time_c = $apiresp_s_sezonami->{'item'}->{'videos'}[$ver-1]->{'watching'}->{'time'} if ($apiresp_s_sezonami->{'item'}->{'videos'}[$ver-1]->{'watching'}->{'time'} <= $apiresp_s_sezonami->{'item'}->{'videos'}[$ver-1]->{'duration'});
     } else {
 	$mid = $apiresp_s_sezonami->{'item'}->{'seasons'}[$season]{'episodes'}[$c]{'id'};
 	if ($apiresp_s_sezonami->{'item'}->{'seasons'}[$season]{'episodes'}[$c]{'watched'} == 0 &&
@@ -343,14 +345,13 @@ sub _serial() {
 	    _resume_config();
 	} 
     }
-    
 }
 sub _title {
-
     $title[$c] = $apiresp_s_sezonami->{'item'}->{'title'};
     print ("Название - $title[$c]\n");
     @title_split = split /\//, $title[$c];
     $title_split[1] =~ s/[\$\:\"]//g;
+    $title_split[1] =~ s/^.//;
     $smartsnum = sprintf ("%02d", $seasonnum);
     $smartenum = sprintf ("%02d", $seria);
     #    $title[$c] = "--force-media-title=\"".$title_split[1];
@@ -363,15 +364,21 @@ sub _title {
     }
     if ($serial == 1 && $title_split[1]) {                               # Иностранный сериал
 	@title_split[1] =~ s/^\ (.*.) Season.*Episode.* - .*/$1/;
-	$title[$c] = "--force-media-title=\"$title_split[1] - s$smartsnum"."e$smartenum\"";
+	if($apiresp_s_sezonami->{'item'}->{'seasons'}[$season]{'episodes'}[$c]{'title'}) {
+	    $title[$c] = "--force-media-title=\"$title_split[1] - s$smartsnum"."e$smartenum \($apiresp_s_sezonami->{'item'}->{'seasons'}[$season]{'episodes'}[$c]{'title'}\)\"";
+	} else {
+	    $title[$c] = "--force-media-title=\"$title_split[1] - s$smartsnum"."e$smartenum'\"";
+	}
     }
     if ($serial == 1 && !$title_split[1]) {                         # Русский сериал
-	$title[$c] = "--force-media-title=\"$title[$c] - s$smartsnum"."e$smartenum\"";
+	if ($apiresp_s_sezonami->{'item'}->{'seasons'}[$season]{'episodes'}[$c]->{'title'}) {
+	    $title[$c] = "--force-media-title=\"$title[$c] - s$smartsnum"."e$smartenum \($apiresp_s_sezonami->{'item'}->{'seasons'}[$season]{'episodes'}[$c]->{'title'}\)\"";
+	} else {
+	    $title[$c] = "--force-media-title=\"$title[$c] - s$smartsnum"."e$smartenum'\"";
+	}
     }
- 
-    $title_c =~ s/[\$\:\"]//g;
+     $title_c =~ s/[\$\:\"]//g;
     $title_split[1] =~ s/[\$\:\"]//g;
-    $title_split[1] =~ s/\ /./g;
 }
 sub _subs {
     #    _curl "v1/items/media-links?mid=$mid";
@@ -382,16 +389,22 @@ sub _subs {
 	    }
 	}
     }
-
     #print "Сабы - @sub<=====\n";
     if ($us &&
 	$title_split[1] &&
 	!@sub) {
 #	print @sub;
 	print "Работает subliminal\n";
-#	print "subliminal download -d /tmp -l eng \"$title_split[1]$apiresp_s_sezonami->{'item'}{'year'}\" > /dev/null";
+	if ($serial) {
+	    $subliminal_command = "cd /tmp; subliminal download -l eng \"$title_split[1].s$smartsnum"."e$smartenum\"";
+	} else {
+	    $subliminal_command = "cd /tmp; subliminal download -l eng \"$title_split[1]\"";	
+	}
+	#print "subliminal download -d /tmp -l eng \"$title_split[1] s$smartsnum"."e$smartenum\"\n\n ";
+	print "$subliminal_command \n";
 	#system("subliminal download -d /tmp -l eng \"$title_split[1]$apiresp_s_sezonami->{'item'}{'year'}\" > /dev/null");
-	system("subliminal download -d /tmp -l eng \"$title_split[1]\" > /dev/null");
+	#	system("cd /tmp; subliminal download -l eng \"$title_split[1].s$smartsnum"."e$smartenum\"");
+	system($subliminal_command);
 	#	@sub[5] = " --sub-file=\"/tmp/$title_c".".en.srt\"";
 	#	@sub[6] = " --sub-file=\"/tmp/$title_c"."en.srt\"";
 	@sub[7] = " --sub-file=\"/tmp/$title_split[1]en.srt\"";
@@ -489,7 +502,6 @@ sub _audio {
 		    #afiles = $afiles.",aud$a\=$alink|$atitle (\'$aauthor\')|$alang";
 		    $afiles = $afiles.",aud$a\=$alink|$atitle ($aauthor)|$alang" if($aauthor);
 		    $afiles = $afiles.",aud$a\=$alink|$atitle|$alang" if(!$aauthor);
-
 		}
 		$luckynum++;
 	    }
@@ -532,6 +544,7 @@ sub _mpv {
 	    if ($output =~ /.*ragequit.*/) {
 		$delete = 1;
 		_resume_config();
+		print "ВЫХОД!!!11\n";
 		exit;
 	    }
 	    if ($output =~ /.*quitAAA.*/) {
