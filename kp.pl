@@ -367,14 +367,14 @@ sub _title {
 	if($apiresp_s_sezonami->{'item'}->{'seasons'}[$season]{'episodes'}[$c]{'title'}) {
 	    $title[$c] = "--force-media-title=\"$title_split[1] - s$smartsnum"."e$smartenum \($apiresp_s_sezonami->{'item'}->{'seasons'}[$season]{'episodes'}[$c]{'title'}\)\"";
 	} else {
-	    $title[$c] = "--force-media-title=\"$title_split[1] - s$smartsnum"."e$smartenum'\"";
+	    $title[$c] = "--force-media-title=\"$title_split[1] - s$smartsnum"."e$smartenum\"";
 	}
     }
     if ($serial == 1 && !$title_split[1]) {                         # Русский сериал
 	if ($apiresp_s_sezonami->{'item'}->{'seasons'}[$season]{'episodes'}[$c]->{'title'}) {
 	    $title[$c] = "--force-media-title=\"$title[$c] - s$smartsnum"."e$smartenum \($apiresp_s_sezonami->{'item'}->{'seasons'}[$season]{'episodes'}[$c]->{'title'}\)\"";
 	} else {
-	    $title[$c] = "--force-media-title=\"$title[$c] - s$smartsnum"."e$smartenum'\"";
+	    $title[$c] = "--force-media-title=\"$title[$c] - s$smartsnum"."e$smartenum\"";
 	}
     }
      $title_c =~ s/[\$\:\"]//g;
@@ -493,8 +493,6 @@ sub _audio {
 		}
 		chomp $alink;
 		if ($afirst) {
-
-		    
 		    $afiles = $afiles."aud$a\=$alink|$atitle ($aauthor)|$alang" if($aauthor);
 		    $afiles = $afiles."aud$a\=$alink|$atitle|$alang" if(!$aauthor);
 		    $afirst = 0;
@@ -518,8 +516,6 @@ sub _mpv {
     if ($ps eq "hls4") {
 	if($resume == 1) {
 	    $command = "$mpv --x11-name=\"resume\" $afiles --fs=no --pause --loop-playlist=1 --no-resume-playback $start @title[$c] @sub '$file' 2>&1";
-#	    $command = "$sl --x11-name=\"resume\" $afiles --fs=no --pause --loop-playlist=1 --no-resume-playback $start @title[$c] @sub '$file' 2>&1"
-#	    system("locale");
 	    $resume = 0;
 	} else {
 	    system("wmctrl -r :ACTIVE: -b remove,fullscreen");
