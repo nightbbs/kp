@@ -73,7 +73,7 @@ if($resume == 1)
 	chomp $input;
 	$input =~ s/\ /+/g;
 	if($input eq "!new"){
-	    _curl("v1/items/hot?type=movie");
+	    _curl("v1/items?type=movie");
  	    $items = $apiresp->{'pagination'}->{'perpage'};
 	} else {
 	    _curl("v1/items/search?q='$input'&perpage=200");
