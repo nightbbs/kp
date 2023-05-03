@@ -3,13 +3,12 @@ no warnings 'utf8';
 use utf8;
 use Encode;
 use URI::Escape;
-#use locale;
 use JSON;
 use Config::Tiny;
 use Data::Dumper;
 use Time::Out qw(timeout);
 #binmode STDOUT, ':utf8';
-$mpv = "mpv --hr-seek=no";
+$mpv = "~/mpv/build/mpv";
 $sl = 'streamlink';
 $config = Config::Tiny->read("$ENV{'HOME'}/.config/kp/kp.conf") or die;
 
@@ -21,14 +20,13 @@ $cont = $config->{kpc}->{continuos_mode};
 
 _curl("v1/user?");
 my $numofdays = int($apiresp->{'user'}->{'subscription'}->{'days'} + 0.5);
-system "figlet -f banner3 \" $numofdays\"";
+system "figlet -f roman \" $numofdays\" | head -7";
 @sub = ();
 $a = 0;
 $c = 0;
 $n = 1;
 $first = 1;
 $items = 0;
-#print Dumper \@ARGV;
 $resume = 1 if ($ARGV[0] eq "-r");
 $need_num = $ARGV[1];
 $resume = 0 if ($ARGV[0] eq "");
@@ -37,7 +35,7 @@ if($resume == 1)
     open(resume_file, '<', "$ENV{'HOME'}/.config/kp/kp.resume") or die $!;
     while(<resume_file>) {
 	if ($n == $need_num) {
-	    @data = split(/\=|\,/, $_);
+	    @data = split(/\=|\,|\n/, $_);
 	    $quit = 0;
 	    if ($data[1] =~ 'y') {
 		$id = $data[0];
@@ -47,6 +45,7 @@ if($resume == 1)
 		if($data[2]) {
 		    $ver = $data[2];
 		}
+		$start2 = $data[3];
 		$id = $data[0];
 		_movie();
 		_start();
@@ -59,6 +58,7 @@ if($resume == 1)
 		$season = $data[2];
 		$seasonnum = $season + 1;
 		$startuem = $data[3];
+		$start2 = $data[4];
 		_api();
 		$serial = 1;
 		_serial();
@@ -67,18 +67,61 @@ if($resume == 1)
 	$n++;
     }
 } else {
+    $n = 0;
+    _curl("v1/items?type=movie&sort=created-");
+    $items = $apiresp->{'pagination'}->{'perpage'};
+    $yesterday = time() - 90000;
+    while ($n < $items) {
+	if ($apiresp->{'items'}[$n]->{'created_at'} > $yesterday) {
+	    print $a + 1, " - (*) ", $apiresp->{'items'}[$a]->{'title'};
+	    print " \($apiresp->{'items'}[$a]{'year'}\)" if($apiresp->{'items'}[$a]{'year'});
+	    print ", IMDB: $apiresp->{'items'}[$a]{'imdb_rating'}" if($apiresp->{'items'}[$a]{'imdb_rating'});
+	    print ", Kinopoisk: $apiresp->{'items'}[$a]{'kinopoisk_rating'}" if($apiresp->{'items'}[$a]{'kinopoisk_rating'});
+	    print ", Kinopub: $apiresp->{'items'}[$a]{'rating'}" if($apiresp->{'items'}[$a]{'rating'});
+	    print "\n";
+	    $a++;
+	}
+	$n++;
+    }
+    $n = 0;
+    _curl("v1/items?type=serial&sort=created-");
+    $items = $apiresp->{'pagination'}->{'perpage'};
+    while ($n < $items) {
+	if ($apiresp->{'items'}[$n]->{'created_at'} > $yesterday) {
+	    print $a + 1, " - ", $apiresp->{'items'}[$n]->{'title'};
+	    print " \($apiresp->{'items'}[$n]{'year'}\)" if($apiresp->{'items'}[$n]{'year'});
+	    print ", IMDB: $apiresp->{'items'}[$a]{'imdb_rating'}" if($apiresp->{'items'}[$n]{'imdb_rating'});
+	    print ", Kinopoisk: $apiresp->{'items'}[$a]{'kinopoisk_rating'}" if($apiresp->{'items'}[$n]{'kinopoisk_rating'});
+	    print ", Kinopub: $apiresp->{'items'}[$a]{'rating'}" if($apiresp->{'items'}[$n]{'rating'});
+	    print "\n";
+	    $a++;
+	}
+	$n++;
+    }
+
+    $apiresp = ();
+    $a = 0;
     while ($apiresp->{pagination}{total} == 0) {
 	print "? > ";
 	my $input = <STDIN>;
 	chomp $input;
 	$input =~ s/\ /+/g;
 	if($input eq "!new"){
-	    _curl("v1/items?type=movie");
+	    _curl("v1/items?type=movie&sort=created-");
  	    $items = $apiresp->{'pagination'}->{'perpage'};
-	} else {
+	}
+	elsif ($input eq "!news"){
+	    _curl("v1/items?type=serial&sort=created-");
+ 	    $items = $apiresp->{'pagination'}->{'perpage'};
+	}
+	elsif ($input =~ /\![1-9]/){
+	    print "Шмондяк!\n";
+	}
+	else {
 	    _curl("v1/items/search?q='$input'&perpage=200");
 	    $items = $apiresp->{'pagination'}->{'total_items'};
 	}
+	
 	if ($items > 0) {
 	    while ($a < $items) {
 		if (($apiresp->{'items'}[$a]->{'type'} eq "movie") or
@@ -101,7 +144,7 @@ if($resume == 1)
 	    print "Нет такого\n";
 	}
     }
-    print "Какое? > ";
+    print "Какой? > ";
     my $input = <STDIN>;
     chomp $input;
     $input--;
@@ -191,18 +234,33 @@ sub _youtube {
 }
 sub _resume_config {
     $resume_config = Config::Tiny->read("$ENV{'HOME'}/.config/kp/kp.resume") or die;
+    if ($timesave == 1 && $serial == 1) {
+	$cwoutn = $c;
+	chomp $cwoutn;
+#	print "писюсю s,$season,$cwoutn"."$time_c";
+  	$resume_config->{_}->{"$id"} = "s,$season,$cwoutn,$time_c";
+    }
+    if ($timesave == 1 && $serial == 0 && $ver !~ /[1-9]/) {
+	print "писюсю m,0,$time_c поскольку $timesave\n";
+	$resume_config->{_}->{"$id"} = "m,0,$time_c";
+    }
+    if ($timesave == 1 && $serial == 0 && $ver =~ /[1-9]/ && $delete == 0 ) {
+	$resume_config->{_}->{"$id"} = "m,$ver,$time_c";
+    }
     if ($delete) {
 	delete $resume_config->{_}->{"$id"};
     }
-    if ($serial == 0 && $delete == 0)  {
-	$resume_config->{_}->{"$id"} = "m";
+    if ($timesave == 0 && $serial == 0 && $delete == 0)  {
+#	print "писюсю m, поскольку $timesave";
+	$resume_config->{_}->{"$id"} = "m,0";
     }
-    if ($serial == 0 && $ver =~ /[1-9]/ && $delete == 0 ) {
+    if ($timesave == 0 && $serial == 0 && $ver =~ /[1-9]/ && $delete == 0 ) {
 	$resume_config->{_}->{"$id"} = "m,$ver";
     }
-    if ($serial == 1 && $delete == 0) {
+   if ($timesave == 0 && $serial == 1 && $delete == 0) {
 	$resume_config->{_}->{"$id"} = "s,$season,$c";
-    }
+   }
+    
     $resume_config->write("$ENV{'HOME'}/.config/kp/kp.resume");
     $delete = 0;
 }
@@ -212,8 +270,10 @@ sub _start {
     }
     if ($serial == 0) {
 	$time_c = 0;
-#print "Время, записанное в апи: $apiresp_s_sezonami->{'item'}->{'videos'}[$ver-1]->{'watching'}->{'time'}, а общее - $apiresp_s_sezonami->{'item'}->{'videos'}[$ver-1]->{'duration'}";
-	$time_c = $apiresp_s_sezonami->{'item'}->{'videos'}[$ver-1]->{'watching'}->{'time'} if ($apiresp_s_sezonami->{'item'}->{'videos'}[$ver-1]->{'watching'}->{'time'} <= $apiresp_s_sezonami->{'item'}->{'videos'}[$ver-1]->{'duration'});
+#	$start2 = 0;
+
+	#print "Время, записанное в апи: $apiresp_s_sezonami->{'item'}->{'videos'}[$ver-1]->{'watching'}->{'time'}, а общее - $apiresp_s_sezonami->{'item'}->{'videos'}[$ver-1]->{'duration'}";
+	$time_c = $apiresp_s_sezonami->{'item'}->{'videos'}[$ver]->{'watching'}->{'time'} if ($apiresp_s_sezonami->{'item'}->{'videos'}[$ver]->{'watching'}->{'time'} <= $apiresp_s_sezonami->{'item'}->{'videos'}[$ver]->{'duration'});
     } else {
 	$mid = $apiresp_s_sezonami->{'item'}->{'seasons'}[$season]{'episodes'}[$c]{'id'};
 	if ($apiresp_s_sezonami->{'item'}->{'seasons'}[$season]{'episodes'}[$c]{'watched'} == 0 &&
@@ -223,13 +283,37 @@ sub _start {
 	    $time_c = "0"
 	}
     }
-	$start = "--start=".$time_c;
+#    chomp $start2;
+#    chomp $start2;
+#     print $start2;
+    if($serial == 0) {
+	if ($start2 =~ /\d+/ &&
+	    $time_c == 0 || $time_c == $apiresp_s_sezonami->{'item'}->{'videos'}[0]->{'duration'}) {
+	    #	    print "Устанавливаем старт $start2 вопреки апи";
+	    $start = "--start=".$start2;
+	} else {
+	    $start = "--start=".$time_c;
+	} 
+    }
+else {
+    if ($start2 =~ /\d+/ &&
+	$time_c == 0 || $time_c == $apiresp_s_sezonami->{'item'}->{'seasons'}[$season]{'episodes'}[$c]->{'duration'}) {
+	    print "Устанавливаем старт $start2 вопреки апи";
+	    $start = "--start=".$start2;
+	} else {
+	    $start = "--start=".$time_c;
+	}
+   }
+    
 }
 sub _mpv2 {
     while ($quit != 1) {
 	if ($resume == 0) {
 	    _file();
+	    $start2='';
 	}
+	$time_save = 1;
+	_resume_config();
 	_start();
 	_mpv();
     }
@@ -239,15 +323,14 @@ sub _mpv2 {
 }
 sub _curl {
     $apiresp = "";
-#    print "@_&access_token=$at\n";
+#   print "@_&access_token=$at\n";
     eval {
 	$apiresp = decode_json(`curl  -s --connect-timeout 2 "https://api.service-kp.com/@_&access_token=$at"`);
-#	print Dumper($apiresp);
+	#print Dumper($apiresp);
     } 
     or do {
 	print "РКН..";
 	$apiresp = decode_json(`curl --proxy socks5://localhost:9050 -s "https://api.service-kp.com/@_&access_token=$at"`);
-
 	#print Dumper($apiresp);
     }
 }
@@ -257,8 +340,7 @@ sub _movie() {
     @sub=();
     $serial = 0;
     $n = 0;
-    $ver = 0;
-    #    $apiresp_s_sezonami = $apiresp;
+    $ver = 0 if ($resume == 0);
     if (scalar(@{$apiresp_s_sezonami->{'item'}->{'videos'}}) > 1 &&
 	$resume != 1) {
 	print "У этого фильма есть ", scalar(@{$apiresp_s_sezonami->{'item'}->{'videos'}}), " версии:\n";
@@ -271,19 +353,13 @@ sub _movie() {
 	$mid = $apiresp_s_sezonami->{'item'}{'videos'}[$input]->{'id'};
 	$n = $input;
 	$ver = $n;
-	#@title[$c] = "--force-media-title=\"$apiresp_s_sezonami->{'item'}->{'title'}. $apiresp->{'item'}->{'videos'}[$n]{'title'}\"";
-	#	_subs();
 	_resume_config();
     } else {
 	if(scalar(@{$apiresp_s_sezonami->{'item'}->{'videos'}}) > 1 ) {
-	    #	    print "А чото\n";
-	    #@title[$c] = "--force-media-title=\"$apiresp_s_sezonami->{'item'}->{'title'}. $apiresp->{'item'}->{'videos'}[$n]{'title'}\"";
 	    $mid = $apiresp->{'item'}{'videos'}[$ver]->{'id'};
 	}
 	else {
-	    #@title[$c] = "--force-media-title=\"$apiresp_s_sezonami->{'item'}->{'title'}.\"";
 	    $mid = $apiresp_s_sezonami->{'item'}{'videos'}[0]->{'id'};
-	    #	    _subs();
 	    _resume_config();
 	}
     }
@@ -299,9 +375,6 @@ sub _serial() {
     $serial = 1;
     print "Сериал...\n";
     $numofeps = scalar(@{$apiresp_s_sezonami->{'item'}->{'seasons'}[$season]{'episodes'}});
-
-#    print "Сериал... Начинаем с $startuem, а всего их $numofeps\n";
-    
     for($c = $startuem; $c < $numofeps; $c++) {
 	$seria = $c + 1;
 	$n = $c;
@@ -377,36 +450,43 @@ sub _title {
 	    $title[$c] = "--force-media-title=\"$title[$c] - s$smartsnum"."e$smartenum\"";
 	}
     }
-     $title_c =~ s/[\$\:\"]//g;
+    $title_c =~ s/[\$\:\"]//g;
     $title_split[1] =~ s/[\$\:\"]//g;
 }
 sub _subs {
-    #    _curl "v1/items/media-links?mid=$mid";
+    @sub = ();
+    $subs=0;
     if (scalar(@{$apiresp_mid->{'subtitles'}}) > 0) {
 	for($subs=0; $subs < scalar(@{$apiresp_mid->{'subtitles'}}); $subs++) {
 	    if ($apiresp_mid->{'subtitles'}[$subs]->{'lang'} eq 'eng') {
-		@sub[$subs] = "--sub-file=$apiresp_mid->{'subtitles'}[$subs]->{'url'} ";
+		@sub[$subs] = "--sub-file=$apiresp_mid->{'subtitles'}[$subs]->{'url'}";
+		$subs++;
 	    }
 	}
     }
     #print "Сабы - @sub<=====\n";
+    if (!@sub) {
+	for($subs=0; $subs < scalar(@{$apiresp_mid->{'subtitles'}}); $subs++) {
+	    if ($apiresp_mid->{'subtitles'}[$subs]->{'lang'} eq 'rus') {
+		@sub[$subs] = "--sub-file=$apiresp_mid->{'subtitles'}[$subs]->{'url'}";
+		$subs++;
+	    }
+	}
+    }	
     if ($us &&
 	$title_split[1] &&
 	!@sub) {
-#	print @sub;
+	system("rm \"/tmp/$title_split[1]en.srt\"");
+	system("rm \"/tmp/$title_split[1] - $seasonnum"."x"."$seria.en.srt\"");
+	system("rm \"/tmp/$title_split[1].en.srt\"");
 	print "Работает subliminal\n";
 	if ($serial) {
 	    $subliminal_command = "cd /tmp; subliminal download -l eng \"$title_split[1].s$smartsnum"."e$smartenum\"";
 	} else {
 	    $subliminal_command = "cd /tmp; subliminal download -l eng \"$title_split[1]\"";	
 	}
-	#print "subliminal download -d /tmp -l eng \"$title_split[1] s$smartsnum"."e$smartenum\"\n\n ";
 	print "$subliminal_command \n";
-	#system("subliminal download -d /tmp -l eng \"$title_split[1]$apiresp_s_sezonami->{'item'}{'year'}\" > /dev/null");
-	#	system("cd /tmp; subliminal download -l eng \"$title_split[1].s$smartsnum"."e$smartenum\"");
 	system($subliminal_command);
-	#	@sub[5] = " --sub-file=\"/tmp/$title_c".".en.srt\"";
-	#	@sub[6] = " --sub-file=\"/tmp/$title_c"."en.srt\"";
 	@sub[7] = " --sub-file=\"/tmp/$title_split[1]en.srt\"";
 	@sub[8] = " --sub-file=\"/tmp/$title_split[1] - $seasonnum"."x"."$seria.en.srt\"";
 	@sub[9] = " --sub-file=\"/tmp/$title_split[1].en.srt\"";
@@ -418,7 +498,7 @@ sub _api {
     $apiresp_s_sezonami = $apiresp;
 }
 sub _api_mid {
-#    print "api вызов";
+    #    print "api вызов";
     _curl "v1/items/media-links?mid=$mid";
     $apiresp_mid = $apiresp;
 }
@@ -437,7 +517,7 @@ sub _file {
 	    $file = $apiresp_mid->{'files'}[$a]->{'url'}->{$ps} if ($apiresp_mid->{'files'}[$a]->{'quality'} eq "480p");
 	}
     }
-#    print "$file ========================================\n";
+    #    print "$file ========================================\n";
     if ($ps eq "hls4") {
 	@notes = `curl -s $file`;
 	$cdn = $file;
@@ -462,21 +542,10 @@ sub _audio {
     $afiles = "--script-opts=\"";
     for($a = 0; $a < scalar(@notes); $a++) {
 	@note = split /(="|[":,])/, @notes[$a];
-#	for($b = 0; $b < scalar(@note); $b++) {
-#	    print " $b - @note[$b]\n";
-#	}
 	$pq =~ s/p//;
-#	if ($apiresp_s_sezonami->{'item'}->{'seasons'}[$season]->{'episodes'}[$c]->{'audios'}[$luckynum]) {
 	if ($note[6] =~ "audio") {
 	    if ($apiresp_s_sezonami->{'item'}->{'seasons'}[$season]->{'episodes'}[$c]->{'audios'}[$luckynum]||
 		$apiresp_s_sezonami->{'item'}->{'videos'}[$ver]->{'audios'}[$luckynum]) {
-		#	    print $note[12];
-		#	    $apiresp_s_sezonami->{'item'}->{'videos'}[0]->{'audios'}[0]->{'type'}->{'title'} = "null" if (!$apiresp_s_sezonami->{'item'}->{'videos'}[0]->{'audios'}[0]->{'type'}->{'title'});
-#		$apiresp_s_sezonami->{'item'}->{'videos'}[0]->{'audios'}[0]->{'lang'} = "null" if (!$apiresp_s_sezonami->{'item'}->{'videos'}[0]->{'audios'}[0]->{'lang'});
-#			    $apiresp_s_sezonami->{'item'}->{'videos'}[0]->{'audios'}[0]->{'lang'} = "null" if (!$apiresp_s_sezonami->{'item'}->{'videos'}[0]->{'audios'}[0]->{'lang'});
-		#	    $alang =  $note[12];
-		#	    $alang =~ s/.*\((.*)\)/$1/;
-		#	    $alang = lc($alang);
 		if ($serial) {
 		    $alang = $apiresp_s_sezonami->{'item'}->{'seasons'}[$season]->{'episodes'}[$c]->{'audios'}[$luckynum]->{'lang'};
 		    #	    $alink = `curl -s $cdn$note[20]| grep \\\<title\\\>Redire | sed -e s/\\\<title\\\>Redirecting\\\ to\/\/ | sed -e "s/<\\\/title>.*//" | sed -e "s/\ //g"`;
@@ -489,7 +558,7 @@ sub _audio {
 		    #	    $alink = `curl -s $cdn$note[20]| grep \\\<title\\\>Redire | sed -e s/\\\<title\\\>Redirecting\\\ to\/\/ | sed -e "s/<\\\/title>.*//" | sed -e "s/\ //g"`;
 		    $alink = $cdn.$note[20];
 		    $atitle = $apiresp_s_sezonami->{'item'}->{'videos'}[$ver]->{'audios'}[$luckynum]->{'type'}->{'title'} || "Null";
-		$aauthor = $apiresp_s_sezonami->{'item'}->{'videos'}[$ver]->{'audios'}[$luckynum]->{'author'}->{'title'};
+		    $aauthor = $apiresp_s_sezonami->{'item'}->{'videos'}[$ver]->{'audios'}[$luckynum]->{'author'}->{'title'};
 		}
 		chomp $alink;
 		if ($afirst) {
@@ -510,12 +579,10 @@ sub _audio {
 sub _mpv {
     @output = 0;
     print "Проигрываем...\n";
-    #open($fh, "-|", "mpv @title[$n] @sub '$file'");
-    #open($fh, "-|", "mpv @title[$n] @sub '$file' 2>&1" );
-    #open($fh, "-|", "mpv @start[$n] @title[$n] @sub '$file' 2>&1" );
     if ($ps eq "hls4") {
 	if($resume == 1) {
-	    $command = "$mpv --x11-name=\"resume\" $afiles --fs=no --pause --loop-playlist=1 --no-resume-playback $start @title[$c] @sub '$file' 2>&1";
+	    #	    $command = "$mpv --x11-name=\"resume\" $afiles --fs=no --pause --loop-playlist=1 --no-resume-playback $start @title[$c] @sub '$file' 2>&1";
+	    	    $command = "$mpv --x11-name=\"resume\" $afiles --window-maximized=no --pause --loop-playlist=1 --no-resume-playback $start @title[$c] @sub '$file' 2>&1";
 	    $resume = 0;
 	} else {
 	    system("wmctrl -r :ACTIVE: -b remove,fullscreen");
@@ -529,6 +596,7 @@ sub _mpv {
     open($fh, "-|", $command);
     binmode($fh,":encoding(UTF-8)");
     $numofiterations = 0;
+    $time_c = 0;
     $fs = 0;
     while (read $fh, $char, 1) {
 	$numofiterations++;
@@ -536,12 +604,20 @@ sub _mpv {
 	    $output = $output . "\n";
 	    if (($output =~ /.*AV:.*/) && ($fs != 1) && ($resume != 1)) {
 		$fs = 1;
- 	    }
+	    }
 	    if ($output =~ /.*ragequit.*/) {
 		$delete = 1;
 		_resume_config();
-		print "ВЫХОД!!!11\n";
+		print "ВЫХОД!!!\n";
 		exit;
+	    }
+	    if ($output =~ /.*End of file.*/) {
+		$quit = 1;
+		if ($serial != 1) {
+		    $delete = 1;
+		    _resume_config();
+		    exit;
+		}
 	    }
 	    if ($output =~ /.*quitAAA.*/) {
 		$quit = 1;
@@ -564,7 +640,6 @@ sub _mpv {
 		$output = "";
 		$numofiterations = 0;
 	    } else {
-		
 		$output = "";
 	    }
 	} else {
@@ -576,14 +651,23 @@ sub _mpv {
 sub _time {
     if($time_c == 0) {
 	return; }
-    #    print "Запись временной метки...";
-    $season=$season+1;
+#    print "Запись временной метки...";
     if ($serial == '0') {
 	$version = $ver + 1;
-	_curl("v1/watching/marktime?id=$id&time=$time_c&video=$version"); }              # запись временной метки
+	$timesave = 1;
+	_resume_config();
+	if($ver) {
+	    _curl("v1/watching/marktime?id=$id&time=$time_c&video=$version");
+	} else {
+	    _curl("v1/watching/marktime?id=$id&time=$time_c");
+	}	    
+    }              # запись временной метки
+    
     else{
-	_curl("v1/watching/marktime?id=$id&time=$time_c&season=$season&video=$seria"); }               # запись временной метки для сериала
-    $season--;
+	$timesave = 1;
+	_resume_config();
+	_curl("v1/watching/marktime?id=$id&time=$time_c&season=$seasonnum&video=$seria");
+    }               # запись временной метки для сериала
 }
 sub _timeconv {
     $secs = $time;
