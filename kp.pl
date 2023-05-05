@@ -237,11 +237,11 @@ sub _resume_config {
     if ($timesave == 1 && $serial == 1) {
 	$cwoutn = $c;
 	chomp $cwoutn;
-#	print "писюсю s,$season,$cwoutn"."$time_c";
+	#	print "писюсю s,$season,$cwoutn"."$time_c";
   	$resume_config->{_}->{"$id"} = "s,$season,$cwoutn,$time_c";
     }
     if ($timesave == 1 && $serial == 0 && $ver !~ /[1-9]/) {
-	print "писюсю m,0,$time_c поскольку $timesave\n";
+#	print "писюсю m,0,$time_c поскольку $timesave\n";
 	$resume_config->{_}->{"$id"} = "m,0,$time_c";
     }
     if ($timesave == 1 && $serial == 0 && $ver =~ /[1-9]/ && $delete == 0 ) {
@@ -251,15 +251,15 @@ sub _resume_config {
 	delete $resume_config->{_}->{"$id"};
     }
     if ($timesave == 0 && $serial == 0 && $delete == 0)  {
-#	print "писюсю m, поскольку $timesave";
+	#	print "писюсю m, поскольку $timesave";
 	$resume_config->{_}->{"$id"} = "m,0";
     }
     if ($timesave == 0 && $serial == 0 && $ver =~ /[1-9]/ && $delete == 0 ) {
 	$resume_config->{_}->{"$id"} = "m,$ver";
     }
-   if ($timesave == 0 && $serial == 1 && $delete == 0) {
+    if ($timesave == 0 && $serial == 1 && $delete == 0) {
 	$resume_config->{_}->{"$id"} = "s,$season,$c";
-   }
+    }
     
     $resume_config->write("$ENV{'HOME'}/.config/kp/kp.resume");
     $delete = 0;
@@ -270,7 +270,7 @@ sub _start {
     }
     if ($serial == 0) {
 	$time_c = 0;
-#	$start2 = 0;
+	#	$start2 = 0;
 
 	#print "Время, записанное в апи: $apiresp_s_sezonami->{'item'}->{'videos'}[$ver-1]->{'watching'}->{'time'}, а общее - $apiresp_s_sezonami->{'item'}->{'videos'}[$ver-1]->{'duration'}";
 	$time_c = $apiresp_s_sezonami->{'item'}->{'videos'}[$ver]->{'watching'}->{'time'} if ($apiresp_s_sezonami->{'item'}->{'videos'}[$ver]->{'watching'}->{'time'} <= $apiresp_s_sezonami->{'item'}->{'videos'}[$ver]->{'duration'});
@@ -283,9 +283,9 @@ sub _start {
 	    $time_c = "0"
 	}
     }
-#    chomp $start2;
-#    chomp $start2;
-#     print $start2;
+    #    chomp $start2;
+    #    chomp $start2;
+    #     print $start2;
     if($serial == 0) {
 	if ($start2 =~ /\d+/ &&
 	    $time_c == 0 || $time_c == $apiresp_s_sezonami->{'item'}->{'videos'}[0]->{'duration'}) {
@@ -295,15 +295,15 @@ sub _start {
 	    $start = "--start=".$time_c;
 	} 
     }
-else {
-    if ($start2 =~ /\d+/ &&
-	$time_c == 0 || $time_c == $apiresp_s_sezonami->{'item'}->{'seasons'}[$season]{'episodes'}[$c]->{'duration'}) {
+    else {
+	if ($start2 =~ /\d+/ &&
+	    $time_c == 0 || $time_c == $apiresp_s_sezonami->{'item'}->{'seasons'}[$season]{'episodes'}[$c]->{'duration'}) {
 	    print "Устанавливаем старт $start2 вопреки апи";
 	    $start = "--start=".$start2;
 	} else {
 	    $start = "--start=".$time_c;
 	}
-   }
+    }
     
 }
 sub _mpv2 {
@@ -323,15 +323,21 @@ sub _mpv2 {
 }
 sub _curl {
     $apiresp = "";
-#   print "@_&access_token=$at\n";
+#    print "@_&access_token=$at\n";
     eval {
 	$apiresp = decode_json(`curl  -s --connect-timeout 2 "https://api.service-kp.com/@_&access_token=$at"`);
-	#print Dumper($apiresp);
+#	print Dumper($apiresp);
     } 
     or do {
+	eval {
 	print "РКН..";
 	$apiresp = decode_json(`curl --proxy socks5://localhost:9050 -s "https://api.service-kp.com/@_&access_token=$at"`);
 	#print Dumper($apiresp);
+	} or do {
+	    print "А кинопаб-то лежит!\n";
+	}
+	
+       
     }
 }
 sub _movie() {
@@ -340,7 +346,7 @@ sub _movie() {
     @sub=();
     $serial = 0;
     $n = 0;
-    $ver = 0 if ($resume == 0);
+    $ver = 0;
     if (scalar(@{$apiresp_s_sezonami->{'item'}->{'videos'}}) > 1 &&
 	$resume != 1) {
 	print "У этого фильма есть ", scalar(@{$apiresp_s_sezonami->{'item'}->{'videos'}}), " версии:\n";
@@ -582,7 +588,7 @@ sub _mpv {
     if ($ps eq "hls4") {
 	if($resume == 1) {
 	    #	    $command = "$mpv --x11-name=\"resume\" $afiles --fs=no --pause --loop-playlist=1 --no-resume-playback $start @title[$c] @sub '$file' 2>&1";
-	    	    $command = "$mpv --x11-name=\"resume\" $afiles --window-maximized=no --pause --loop-playlist=1 --no-resume-playback $start @title[$c] @sub '$file' 2>&1";
+	    $command = "$mpv --x11-name=\"resume\" $afiles --window-maximized=no --pause --loop-playlist=1 --no-resume-playback $start @title[$c] @sub '$file' 2>&1";
 	    $resume = 0;
 	} else {
 	    system("wmctrl -r :ACTIVE: -b remove,fullscreen");
@@ -651,16 +657,12 @@ sub _mpv {
 sub _time {
     if($time_c == 0) {
 	return; }
-#    print "Запись временной метки...";
+    #    print "Запись временной метки...";
     if ($serial == '0') {
 	$version = $ver + 1;
 	$timesave = 1;
 	_resume_config();
-	if($ver) {
-	    _curl("v1/watching/marktime?id=$id&time=$time_c&video=$version");
-	} else {
-	    _curl("v1/watching/marktime?id=$id&time=$time_c");
-	}	    
+	_curl("v1/watching/marktime?id=$id&time=$time_c&video=$version");
     }              # запись временной метки
     
     else{
