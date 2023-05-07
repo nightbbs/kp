@@ -174,6 +174,7 @@ if($resume == 1)
 	_movie();
 	_mpv2();
     } else {
+	$id = $apiresp->{'items'}[$input]{'id'};
 	_serial();
     }
 }
@@ -218,8 +219,6 @@ sub _start {
     }
     if ($serial == 0) {
 	$time_c = 0;
-	#	$start2 = 0;
-
 	#print "Время, записанное в апи: $apiresp_s_sezonami->{'item'}->{'videos'}[$ver-1]->{'watching'}->{'time'}, а общее - $apiresp_s_sezonami->{'item'}->{'videos'}[$ver-1]->{'duration'}";
 	$time_c = $apiresp_s_sezonami->{'item'}->{'videos'}[$ver]->{'watching'}->{'time'} if ($apiresp_s_sezonami->{'item'}->{'videos'}[$ver]->{'watching'}->{'time'} <= $apiresp_s_sezonami->{'item'}->{'videos'}[$ver]->{'duration'});
     } else {
@@ -231,9 +230,6 @@ sub _start {
 	    $time_c = "0"
 	}
     }
-    #    chomp $start2;
-    #    chomp $start2;
-    #     print $start2;
     if($serial == 0) {
 	if ($start2 =~ /\d+/ &&
 	    $time_c == 0 || $time_c == $apiresp_s_sezonami->{'item'}->{'videos'}[0]->{'duration'}) {
@@ -270,11 +266,12 @@ sub _mpv2 {
 
 }
 sub _curl {
-    $apiresp = "";
-    #      print "@_&access_token=$at\n";
+   $apiresp = "";
+#      print "@_&access_token=$at\n";
     eval {
 	$apiresp = decode_json(`curl  -s --connect-timeout 2 "https://api.service-kp.com/@_&access_token=$at"`);
-	#	print Dumper($apiresp);
+
+#print Dumper($apiresp);
     } 
     or do {
 	eval {
@@ -328,18 +325,17 @@ sub _serial() {
     #    print "Сериал...\n";
     if($resume == 0) {
 	if(!$luckynum) {
-	    _curl("v1/items/$myfilm[$input]?nolinks=1");
-	}
-	$apiresp_s_sezonami = $apiresp;
+	    _api();		
+	} 
 	$serial = 1;
-	if(scalar(@{$apiresp->{'item'}->{'seasons'}}) > 1 ) {
-	    for($a = 0; $a < scalar(@{$apiresp->{'item'}->{'seasons'}}); $a++) {
+	if(scalar(@{$apiresp_s_sezonami->{'item'}->{'seasons'}}) > 1 ) {
+	    for($a = 0; $a < scalar(@{$apiresp_s_sezonami->{'item'}->{'seasons'}}); $a++) {
 		$numunwatchedeps = 0;
-		for($c = 0; $c < scalar(@{$apiresp->{'item'}->{'seasons'}[$a]{'episodes'}}); $c++) {
-		    $numunwatchedeps++ if ($apiresp->{'item'}->{'seasons'}[$a]{'episodes'}[$c]{'watched'} != 1); }
+		for($c = 0; $c < scalar(@{$apiresp_s_sezonami->{'item'}->{'seasons'}[$a]{'episodes'}}); $c++) {
+		    $numunwatchedeps++ if ($apiresp_s_sezonami->{'item'}->{'seasons'}[$a]{'episodes'}[$c]{'watched'} != 1); }
 		print $a+1;
-		if ($apiresp->{'item'}->{'seasons'}[$a]->{'title'}) {
-		    print " - $apiresp->{'item'}->{'seasons'}[$a]->{'title'}";
+		if ($apiresp_s_sezonami->{'item'}->{'seasons'}[$a]->{'title'}) {
+		    print " - $apiresp_s_sezonami->{'item'}->{'seasons'}[$a]->{'title'}";
 		}else{
 		    print " - Сезон ", $a+1;}
 		print " ($numunwatchedeps)\n" if ($numunwatchedeps > 0);
@@ -394,8 +390,8 @@ sub _serial() {
 	$id = $apiresp->{'item'}{'id'};
 	$sid = $apiresp->{'item'}->{'seasons'}[$season]{'id'};
 	$mid = $apiresp->{'item'}->{'seasons'}[$season]{'episodes'}[$n]{'id'};
-	$apiresp_s_sezonami = $apiresp;
-    } 
+    }
+    _api();
     $numofeps = scalar(@{$apiresp_s_sezonami->{'item'}->{'seasons'}[$season]{'episodes'}});
     for($c = $startuem; $c < $numofeps; $c++) {
 	$seria = $c + 1;
