@@ -42,7 +42,7 @@ function on_media_change(name, value)
 	    end
 	 end
       end
-      
+     
       if added ~= 1 then
 	 for i = -1,50,1
 	 do
@@ -56,15 +56,14 @@ function on_media_change(name, value)
 		  myaud = mysplit(mp.get_opt(scr), "|")[1]
 		  mytitle = mysplit(mp.get_opt(scr), "|")[2]
 		  mylang = mysplit(mp.get_opt(scr), "|")[3]
-		  if string.match(mytitle, "null") and
-		     string.match(mylang, "eng") 
+		  if string.match(mylang, "eng") 
 		  then
 --		     command = "audio-add "..myaud.." select \""..mytitle.."\" "..mylang
 		     command = "audio-add "..myaud.." select \""..mytitle.."\"  \""..mylang.."\""
 		     added = 1
 		     msg.log("info", "added null audiotrack")
 		     mp.command(command)
-		     mp.commandv("set", "sub", 0);
+		     --mp.commandv("set", "sub", 0);
 		  end
 	       end
 	    end
