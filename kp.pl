@@ -201,13 +201,13 @@ sub _resume_config {
     }
     if ($timesave == 0 && $serial == 0 && $delete == 0)  {
 	#	print "писюсю m, поскольку $timesave";
-	$resume_config->{_}->{"$id"} = "m,0";
+#	$resume_config->{_}->{"$id"} = "m,0";
     }
     if ($timesave == 0 && $serial == 0 && $ver =~ /[1-9]/ && $delete == 0 ) {
-	$resume_config->{_}->{"$id"} = "m,$ver";
+#	$resume_config->{_}->{"$id"} = "m,$ver";
     }
     if ($timesave == 0 && $serial == 1 && $delete == 0) {
-	$resume_config->{_}->{"$id"} = "s,$season,$c";
+#	$resume_config->{_}->{"$id"} = "s,$season,$c";
     }
     
     $resume_config->write("$ENV{'HOME'}/.config/kp/kp.resume");
@@ -254,11 +254,12 @@ sub _mpv2 {
     while ($quit != 1) {
 	if ($resume == 0) {
 	    _file();
-	    $start2='';
+#	    $start2='';
 	}
 	$time_save = 1;
 	_resume_config();
 	_start();
+        _subs();
 	_mpv();
     }
     $delete = 1;
@@ -404,7 +405,6 @@ sub _serial() {
 	_resume_config();
 	_file();
 	_mpv2();
-	$resume = 0;
 	$quit=0;
 	$delete = 1;
 	_resume_config();
@@ -601,7 +601,6 @@ sub _mpv {
 	if($resume == 1) {
 	    #	    $command = "$mpv --x11-name=\"resume\" $afiles --fs=no --pause --loop-playlist=1 --no-resume-playback $start @title[$c] @sub '$file' 2>&1";
 	    $command = "$mpv --x11-name=\"resume\" $afiles --window-maximized=no --pause --loop-playlist=1 --no-resume-playback $start @title[$c] @sub '$file' 2>&1";
-	    $resume = 0;
 	} else {
 	    system("wmctrl -r :ACTIVE: -b remove,fullscreen");
 	    $command ="$mpv --pause=no ".$afiles." --loop-playlist=1 --no-resume-playback $start @title[$c] @sub '$file' 2>&1";
@@ -631,6 +630,8 @@ sub _mpv {
 	    }
 	    if ($output =~ /.*End of file.*/) {
 		$quit = 1;
+		$start2='';
+	       	$resume = 0;
 		if ($serial != 1) {
 		    $delete = 1;
 		    _resume_config();
@@ -639,6 +640,8 @@ sub _mpv {
 	    }
 	    if ($output =~ /.*quitAAA.*/) {
 		$quit = 1;
+		$start2='';
+		$resume = 0;
 		if ($serial != 1) {
 		    #print "НЕ сериал\n";
 		    $delete = 1;
