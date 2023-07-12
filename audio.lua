@@ -17,6 +17,7 @@ function on_media_change(name, value)
 		  string.match(mylang, "eng")
 	       then
 		  mp.set_property("aid", i)
+		  mp.set_property("sid", 1)
 		  added = 1
 	       end
 	    end
@@ -25,6 +26,7 @@ function on_media_change(name, value)
 	       if string.match(mylang, "eng")
 	       then
 		  mp.set_property("aid", i)
+		  mp.set_property("sid", 1)
 		  added = 1
 	       end
 	    end
@@ -33,6 +35,7 @@ function on_media_change(name, value)
 	       if string.match(mylang, "rus")
 	       then
 		  mp.set_property("aid", i)
+		  mp.set_property("sid", 0)
 	       end
 	       
 	    end
