@@ -8,7 +8,7 @@ use Config::Tiny;
 use Data::Dumper;
 use Time::Out qw(timeout);
 #binmode STDOUT, ':utf8';
-$mpv = "~/mpv/build/mpv";
+$mpv = "~/mpv/build5/mpv";
 $sl = 'streamlink';
 $config = Config::Tiny->read("$ENV{'HOME'}/.config/kp/kp.conf") or die;
 
@@ -201,27 +201,29 @@ sub _resume_config {
     }
     if ($timesave == 0 && $serial == 0 && $delete == 0)  {
 	#	print "писюсю m, поскольку $timesave";
-#	$resume_config->{_}->{"$id"} = "m,0";
+	#	$resume_config->{_}->{"$id"} = "m,0";
     }
     if ($timesave == 0 && $serial == 0 && $ver =~ /[1-9]/ && $delete == 0 ) {
-#	$resume_config->{_}->{"$id"} = "m,$ver";
+	#	$resume_config->{_}->{"$id"} = "m,$ver";
     }
     if ($timesave == 0 && $serial == 1 && $delete == 0) {
-#	$resume_config->{_}->{"$id"} = "s,$season,$c";
+	#	$resume_config->{_}->{"$id"} = "s,$season,$c";
     }
     
     $resume_config->write("$ENV{'HOME'}/.config/kp/kp.resume");
     $delete = 0;
 }
 sub _start {
-    if ($resume == 0) {
-	_api();
-    }
+    #if ($resume == 0) {
+    _api();
+    #}
+
     if ($serial == 0) {
 	$time_c = 0;
 	#print "Время, записанное в апи: $apiresp_s_sezonami->{'item'}->{'videos'}[$ver-1]->{'watching'}->{'time'}, а общее - $apiresp_s_sezonami->{'item'}->{'videos'}[$ver-1]->{'duration'}";
-	$time_c = $apiresp_s_sezonami->{'item'}->{'videos'}[$ver]->{'watching'}->{'time'} if ($apiresp_s_sezonami->{'item'}->{'videos'}[$ver]->{'watching'}->{'time'} <= $apiresp_s_sezonami->{'item'}->{'videos'}[$ver]->{'duration'});
+	$time_c = $apiresp_s_sezonami->{'item'}->{'videos'}[$ver]->{'watching'}->{'time'} if ($apiresp_s_sezonami->{'item'}->{'videos'}[$ver]->{'watching'}->{'time'} <= $apiresp_s_sezonami->{'item'}->{'videos'}[$ver]->{'duration'}-10);
     } else {
+	$time_c = "0";
 	$mid = $apiresp_s_sezonami->{'item'}->{'seasons'}[$season]{'episodes'}[$c]{'id'};
 	if ($apiresp_s_sezonami->{'item'}->{'seasons'}[$season]{'episodes'}[$c]{'watched'} == 0 &&
 	    $single !=1) {
@@ -254,7 +256,7 @@ sub _mpv2 {
     while ($quit != 1) {
 	if ($resume == 0) {
 	    _file();
-#	    $start2='';
+	    #	    $start2='';
 	}
 	$time_save = 1;
 	_resume_config();
@@ -267,20 +269,22 @@ sub _mpv2 {
 
 }
 sub _curl {
-   $apiresp = "";
-#      print "@_&access_token=$at\n";
+    $apiresp = "";
+    #   print "@_&access_token=$at\n";
     eval {
-	$apiresp = decode_json(`curl  -s --connect-timeout 2 "https://api.service-kp.com/@_&access_token=$at"`);
-
-#print Dumper($apiresp);
+	$apiresp = decode_json(`curl  -s -m20 --connect-timeout 2 "https://api.service-kp.com/@_&access_token=$at"`);
+	#die if ($apiresp eq "");
+	#	print Dumper($apiresp);
     } 
     or do {
 	eval {
 	    print "РКН..";
-	    $apiresp = decode_json(`curl --proxy socks5://localhost:9050 -s "https://api.service-kp.com/@_&access_token=$at"`);
+	    $apiresp = decode_json(`curl -m20 --proxy socks5://localhost:9050 -s "https://api.service-kp.com/@_&access_token=$at"`);
 	    #print Dumper($apiresp);
+	    #	    die if ($apiresp == "");
 	} or do {
 	    print "А кинопаб-то лежит! (ну или просто апи не отвечает)\n";
+	    _curl(@_);
 	}
     }
 }
@@ -290,7 +294,7 @@ sub _movie() {
     @sub=();
     $serial = 0;
     $n = 0;
-    $ver = 0;
+    #    $ver = 0;
     if (scalar(@{$apiresp_s_sezonami->{'item'}->{'videos'}}) > 1 &&
 	$resume != 1) {
 	print "У этого фильма есть ", scalar(@{$apiresp_s_sezonami->{'item'}->{'videos'}}), " версии:\n";
@@ -432,7 +436,7 @@ sub _serial() {
 	    $seasonnum++;
 	    print("Номер сезона - $seasonnum");
 	    $numofeps = scalar(@{$apiresp_s_sezonami->{'item'}->{'seasons'}[$season]{'episodes'}});
-	    print(", а всего серий - $numofeps");
+	    print(", а всего серий - $numofeps\n");
 	    _resume_config();
 	} 
     }
@@ -470,6 +474,8 @@ sub _title {
     }
     $title_c =~ s/[\$\:\"]//g;
     $title_split[1] =~ s/[\$\:\"]//g;
+
+    #   system("emacsclient -e (rename-buffer $title_c)");
 }
 sub _subs {
     @sub = ();
@@ -516,7 +522,7 @@ sub _api {
     $apiresp_s_sezonami = $apiresp;
 }
 sub _api_mid {
-    #    print "api вызов";
+    #    print "api вызов====================================";
     _curl "v1/items/media-links?mid=$mid";
     $apiresp_mid = $apiresp;
 }
@@ -543,13 +549,13 @@ sub _file {
 	for($a = 0; $a < scalar(@notes); $a++) {
 	    @note = split /(="|[":,])/, @notes[$a];
 	    $pq =~ s/p//;
-	    if ($next) {
-		$file = "$cdn$note[0]";
-		$next = 0;
-	    }
-	    if ($note[24] =~ "audio$pq") {
-		$next = 1;
-	    }
+	    #	    if ($next) {
+	    #		$file = "$note";
+	    #		$next = 0;
+	    #	    }
+	    #	    if ($note[24] =~ "audio$pq") {
+	    #		$next = 1;
+	    #	    }
 	}
 	_audio();
     }
@@ -558,6 +564,7 @@ sub _audio {
     $afirst = 1;
     $luckynum = 0;
     $afiles = "--script-opts=\"";
+    $num = 1;
     for($a = 0; $a < scalar(@notes); $a++) {
 	@note = split /(="|[":,])/, @notes[$a];
 	$pq =~ s/p//;
@@ -569,7 +576,7 @@ sub _audio {
 		    #	    $alink = `curl -s $cdn$note[20]| grep \\\<title\\\>Redire | sed -e s/\\\<title\\\>Redirecting\\\ to\/\/ | sed -e "s/<\\\/title>.*//" | sed -e "s/\ //g"`;
 		    $alink = $cdn.$note[20];
 		    $atitle = $apiresp_s_sezonami->{'item'}->{'seasons'}[$season]->{'episodes'}[$c]->{'audios'}[$luckynum]->{'type'}->{'title'} || "null";
-
+		    
 		    $aauthor = $apiresp_s_sezonami->{'item'}->{'seasons'}[$season]->{'episodes'}[$c]->{'audios'}[$luckynum]->{'author'}->{'title'};
 		} else {
 		    $alang = $apiresp_s_sezonami->{'item'}->{'videos'}[$ver]->{'audios'}[$luckynum]->{'lang'};
@@ -580,14 +587,15 @@ sub _audio {
 		}
 		chomp $alink;
 		if ($afirst) {
-		    $afiles = $afiles."aud$a\=$alink|$atitle ($aauthor)|$alang" if($aauthor);
-		    $afiles = $afiles."aud$a\=$alink|$atitle|$alang" if(!$aauthor);
+		    $afiles = $afiles."aud1\=$atitle ($aauthor)|$alang" if($aauthor);
+		    $afiles = $afiles."aud1\=$atitle|$alang" if(!$aauthor);
 		    $afirst = 0;
 		} else {
-		    #afiles = $afiles.",aud$a\=$alink|$atitle (\'$aauthor\')|$alang";
-		    $afiles = $afiles.",aud$a\=$alink|$atitle ($aauthor)|$alang" if($aauthor);
-		    $afiles = $afiles.",aud$a\=$alink|$atitle|$alang" if(!$aauthor);
+		    #afiles = $afiles.",aud$a\=$atitle (\'$aauthor\')|$alang";
+		    $afiles = $afiles.",aud$num\=$atitle ($aauthor)|$alang" if($aauthor);
+		    $afiles = $afiles.",aud$num\=$atitle|$alang" if(!$aauthor);
 		}
+		$num++;
 		$luckynum++;
 	    }
 	}
@@ -599,8 +607,7 @@ sub _mpv {
     print "Проигрываем...\n";
     if ($ps eq "hls4") {
 	if($resume == 1) {
-	    #	    $command = "$mpv --x11-name=\"resume\" $afiles --fs=no --pause --loop-playlist=1 --no-resume-playback $start @title[$c] @sub '$file' 2>&1";
-	    $command = "$mpv --x11-name=\"resume\" $afiles --window-maximized=no --pause --loop-playlist=1 --no-resume-playback $start @title[$c] @sub '$file' 2>&1";
+	    $command = "$mpv --x11-name=\"resume\" $afiles --fs=no --pause --loop-playlist=1 --no-resume-playback $start @title[$c] @sub '$file' 2>&1";
 	} else {
 	    system("wmctrl -r :ACTIVE: -b remove,fullscreen");
 	    $command ="$mpv --pause=no ".$afiles." --loop-playlist=1 --no-resume-playback $start @title[$c] @sub '$file' 2>&1";
@@ -609,7 +616,8 @@ sub _mpv {
 	print("$mpv --fs=no --pause --loop-playlist=1 $start @title[$c] @sub '$file' 2>&1\n");
 	$command = "mpv --fs=no --pause --loop-playlist=1 $start @title[$c] @sub '$file' 2>&1";
     }
-    #print $command;
+
+    print $command;
     open($fh, "-|", $command);
     binmode($fh,":encoding(UTF-8)");
     $numofiterations = 0;
