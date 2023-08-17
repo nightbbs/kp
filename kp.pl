@@ -7,20 +7,19 @@ use JSON;
 use Config::Tiny;
 use Data::Dumper;
 use Time::Out qw(timeout);
-#binmode STDOUT, ':utf8';
 #$mpv = "~/mpv/build7/mpv --http-proxy=http://nightbbs.ru:3128";
-$mpv = "~/mpv/build8/mpv";
-$sl = 'streamlink';
-$ua = "Mozilla/5.0 (Macintosh; Intel Mac OS X 13_4_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36 OPR/100.0.0.0";
-
-$config = Config::Tiny->read("$ENV{'HOME'}/.config/kp/kp.conf") or die;
-
-$at = $config->{_}->{access_token};
-$pq = $config->{kpc}->{preferred_quality};
-$ps = $config->{kpc}->{preferred_stream};
-$us = $config->{kpc}->{use_subliminal};
-$cont = $config->{kpc}->{continuos_mode};
-
+#$mpv = "mpv";
+sub _read_config {
+    $config = Config::Tiny->read("$ENV{'HOME'}/.config/kp/kp.conf") or die;
+    $at = $config->{_}->{access_token};
+    $pq = $config->{kpc}->{preferred_quality};
+    $ps = $config->{kpc}->{preferred_stream};
+    $us = $config->{kpc}->{use_subliminal};
+    $mpv = $config->{kpc}->{mpv};
+    $ua = $config->{kpc}->{user_agent};
+    $cont = $config->{kpc}->{continuos_mode};
+}
+_read_config();
 #_curl("v1/device/notify?title=\"KinoPub WebApp\"&hardware=\"Linux x86_64\"&software=\"Chrome 83.0.4103.122\"");
 #exit;
 _curl("v1/user?");
@@ -260,11 +259,14 @@ sub _start {
 sub _mpv2 {
     while ($quit != 1) {
 	if ($resume == 0) {
-	    _file();
+	    _read_config();
+#	    _file();
 	    #	    $start2='';
 	}
 	$time_save = 1;
 	_resume_config();
+	_read_config();
+	_file();
 	_start();
 #        _subs();
 	_mpv();
@@ -326,10 +328,10 @@ sub _movie() {
     _api_mid();
     _start();
     _title();
-    if($resume == 0) {
-	_file();
-	_subs();
-    }
+#    if($resume == 0) {
+#	_file();
+#	_subs();
+#    }
 }
 sub _serial() {
     $serial = 1;
@@ -413,7 +415,7 @@ sub _serial() {
 	_api_mid();
 	_subs();
 	_resume_config();
-	_file();
+#	_file();
 	_mpv2();
 	$quit=0;
 	$delete = 1;
@@ -571,10 +573,81 @@ sub _audio {
     $luckynum = 0;
     $afiles = "--script-opts=\"";
     $num = 1;
+    $added = 0;
+    $pq =~ s/p//;
     for($a = 0; $a < scalar(@notes); $a++) {
 	@note = split /(="|[":,])/, @notes[$a];
-	$pq =~ s/p//;
 	if ($note[6] =~ "audio$pq") {
+	    if ($apiresp_s_sezonami->{'item'}->{'seasons'}[$season]->{'episodes'}[$c]->{'audios'}[$luckynum]||
+		$apiresp_s_sezonami->{'item'}->{'videos'}[$ver]->{'audios'}[$luckynum]) {
+		if ($serial) {
+		    $alang = $apiresp_s_sezonami->{'item'}->{'seasons'}[$season]->{'episodes'}[$c]->{'audios'}[$luckynum]->{'lang'};
+		    #	    $alink = `curl -s $cdn$note[20]| grep \\\<title\\\>Redire | sed -e s/\\\<title\\\>Redirecting\\\ to\/\/ | sed -e "s/<\\\/title>.*//" | sed -e "s/\ //g"`;
+		    $alink = $note[20].$note[21].$note[22];
+		    $atitle = $apiresp_s_sezonami->{'item'}->{'seasons'}[$season]->{'episodes'}[$c]->{'audios'}[$luckynum]->{'type'}->{'title'} || "null";
+		    
+		    $aauthor = $apiresp_s_sezonami->{'item'}->{'seasons'}[$season]->{'episodes'}[$c]->{'audios'}[$luckynum]->{'author'}->{'title'};
+		} else {
+		    $alang = $apiresp_s_sezonami->{'item'}->{'videos'}[$ver]->{'audios'}[$luckynum]->{'lang'};
+		    #	    $alink = `curl -s $cdn$note[20]| grep \\\<title\\\>Redire | sed -e s/\\\<title\\\>Redirecting\\\ to\/\/ | sed -e "s/<\\\/title>.*//" | sed -e "s/\ //g"`;
+		    $alink = $note[20].$note[21].$note[22];
+		    $atitle = $apiresp_s_sezonami->{'item'}->{'videos'}[$ver]->{'audios'}[$luckynum]->{'type'}->{'title'} || "Null";
+		    $aauthor = $apiresp_s_sezonami->{'item'}->{'videos'}[$ver]->{'audios'}[$luckynum]->{'author'}->{'title'};
+		}
+		chomp $alink;
+		if ($afirst) {
+		    $afiles = $afiles."aud1\=$alink|$atitle ($aauthor)|$alang" if($aauthor);
+		    $afiles = $afiles."aud1\=$alink|$atitle|$alang" if(!$aauthor);
+		    $afirst = 0;
+		    $added = 1;
+		} else {
+		    $afiles = $afiles.",aud$num\=$alink|$atitle ($aauthor)|$alang" if($aauthor);
+		    $afiles = $afiles.",aud$num\=$alink|$atitle|$alang" if(!$aauthor);
+		}
+		$num++;
+		$luckynum++;
+	    }
+	}
+    }
+    $stop = 1 if ($added);
+    for($a = 0; $a < scalar(@notes); $a++) {
+	@note = split /(="|[":,])/, @notes[$a];
+	if ($note[6] =~ "audio720" && $stop == 0) {
+	    if ($apiresp_s_sezonami->{'item'}->{'seasons'}[$season]->{'episodes'}[$c]->{'audios'}[$luckynum]||
+		$apiresp_s_sezonami->{'item'}->{'videos'}[$ver]->{'audios'}[$luckynum]) {
+		if ($serial) {
+		    $alang = $apiresp_s_sezonami->{'item'}->{'seasons'}[$season]->{'episodes'}[$c]->{'audios'}[$luckynum]->{'lang'};
+		    #	    $alink = `curl -s $cdn$note[20]| grep \\\<title\\\>Redire | sed -e s/\\\<title\\\>Redirecting\\\ to\/\/ | sed -e "s/<\\\/title>.*//" | sed -e "s/\ //g"`;
+		    $alink = $note[20].$note[21].$note[22];
+		    $atitle = $apiresp_s_sezonami->{'item'}->{'seasons'}[$season]->{'episodes'}[$c]->{'audios'}[$luckynum]->{'type'}->{'title'} || "null";
+		    
+		    $aauthor = $apiresp_s_sezonami->{'item'}->{'seasons'}[$season]->{'episodes'}[$c]->{'audios'}[$luckynum]->{'author'}->{'title'};
+		} else {
+		    $alang = $apiresp_s_sezonami->{'item'}->{'videos'}[$ver]->{'audios'}[$luckynum]->{'lang'};
+		    #	    $alink = `curl -s $cdn$note[20]| grep \\\<title\\\>Redire | sed -e s/\\\<title\\\>Redirecting\\\ to\/\/ | sed -e "s/<\\\/title>.*//" | sed -e "s/\ //g"`;
+		    $alink = $note[20].$note[21].$note[22];
+		    $atitle = $apiresp_s_sezonami->{'item'}->{'videos'}[$ver]->{'audios'}[$luckynum]->{'type'}->{'title'} || "Null";
+		    $aauthor = $apiresp_s_sezonami->{'item'}->{'videos'}[$ver]->{'audios'}[$luckynum]->{'author'}->{'title'};
+		}
+		chomp $alink;
+		if ($afirst) {
+		    $afiles = $afiles."aud1\=$alink|$atitle ($aauthor)|$alang" if($aauthor);
+		    $afiles = $afiles."aud1\=$alink|$atitle|$alang" if(!$aauthor);
+		    $afirst = 0;
+		    $added = 1;
+		} else {
+		    $afiles = $afiles.",aud$num\=$alink|$atitle ($aauthor)|$alang" if($aauthor);
+		    $afiles = $afiles.",aud$num\=$alink|$atitle|$alang" if(!$aauthor);
+		}
+		$num++;
+		$luckynum++;
+	    }
+	}
+    }
+    $stop = 1 if ($added);
+    for($a = 0; $a < scalar(@notes); $a++) {
+	@note = split /(="|[":,])/, @notes[$a];
+	if ($note[6] =~ "audio480" && $stop == 0) {
 	    if ($apiresp_s_sezonami->{'item'}->{'seasons'}[$season]->{'episodes'}[$c]->{'audios'}[$luckynum]||
 		$apiresp_s_sezonami->{'item'}->{'videos'}[$ver]->{'audios'}[$luckynum]) {
 		if ($serial) {
@@ -605,6 +678,7 @@ sub _audio {
 	    }
 	}
     }
+
     $afiles = $afiles."\"";
 }	
 sub _mpv {
@@ -612,10 +686,10 @@ sub _mpv {
     print "Проигрываем...\n";
     if ($ps eq "hls4") {
 	if($resume == 1) {
-		$command = "$mpv --x11-name=\"resume\" $afiles --fs=no --pause --loop-playlist=1 --no-resume-playback $start @title[$c] @sub '$file' --user-agent=\"$ua\" 2>&1";
+		$command = "$mpv --x11-name=\"resume\" $afiles --fs=no --pause --loop-playlist=1 --no-resume-playback $start @title[$c] @sub '$file' --user-agent=$ua 2>&1";
 #	}
 	} else {
-		$command = "$mpv $afiles --loop-playlist=1 --no-resume-playback $start @title[$c] @sub '$file' --user-agent=\"$ua\" 2>&1";
+		$command = "$mpv $afiles --loop-playlist=1 --no-resume-playback $start @title[$c] @sub '$file' --user-agent=$ua 2>&1";
 
 	    system("wmctrl -r :ACTIVE: -b remove,fullscreen");
 	}
@@ -649,7 +723,6 @@ sub _mpv {
 	       	$resume = 0;
 		if ($serial != 1) {
 		    $delete = 1;
-		    _resume_config();
 		    exit;
 		}
 	    }
@@ -657,6 +730,7 @@ sub _mpv {
 		$quit = 1;
 		$start2='';
 		$resume = 0;
+		_read_config();
 		if ($serial != 1) {
 		    #print "НЕ сериал\n";
 		    $delete = 1;
