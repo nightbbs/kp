@@ -684,7 +684,7 @@ sub _mpv {
 	$command = "mpv --fs=no --pause --loop-playlist=1 $start @title[$c] @sub '$file' --user-agent=\"$ua\" 2>&1";
     }
 
-    print $command;
+    print $command if ($debug);
     open($fh, "-|", $command);
     binmode($fh,":encoding(UTF-8)");
     $numofiterations = 0;
@@ -709,7 +709,6 @@ sub _mpv {
 	       	$resume = 0;
 		$delete = 1;
 		_resume_config();
-		}
 	    }
 	    if ($output =~ /.*quitAAA.*/) {
 		$quit = 1;
