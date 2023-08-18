@@ -7,8 +7,6 @@ use JSON;
 use Config::Tiny;
 use Data::Dumper;
 use Time::Out qw(timeout);
-#$mpv = "~/mpv/build7/mpv --http-proxy=http://nightbbs.ru:3128";
-#$mpv = "mpv";
 sub _read_config {
     $config = Config::Tiny->read("$ENV{'HOME'}/.config/kp/kp.conf") or die;
     $at = $config->{_}->{access_token};
@@ -280,7 +278,6 @@ sub _curl {
     eval {
 	$apiresp = decode_json(`curl  -s -m20 --connect-timeout 2 "https://api.service-kp.com/@_&access_token=$at"`);
 	#die if ($apiresp eq "");
-	print Dumper($apiresp) if ($debug);
     } 
     or do {
 	eval {
@@ -518,11 +515,13 @@ sub _subs {
 sub _api {
     _curl("v1/items/$id?nolinks=1");
     $apiresp_s_sezonami = $apiresp;
+    print Dumper($apiresp) if ($debug);
 }
 sub _api_mid {
     print "api вызов====================================" if ($debug); 
     _curl "v1/items/media-links?mid=$mid";
     $apiresp_mid = $apiresp;
+    print Dumper($apiresp) if ($debug);
 }
 sub _file {
     $file = 0;
