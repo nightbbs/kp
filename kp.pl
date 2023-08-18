@@ -18,10 +18,9 @@ sub _read_config {
     $mpv = $config->{kpc}->{mpv};
     $ua = $config->{kpc}->{user_agent};
     $cont = $config->{kpc}->{continuos_mode};
+    $debug = $config->{_}->{debug};
 }
 _read_config();
-#_curl("v1/device/notify?title=\"KinoPub WebApp\"&hardware=\"Linux x86_64\"&software=\"Chrome 83.0.4103.122\"");
-#exit;
 _curl("v1/user?");
 my $numofdays = int($apiresp->{'user'}->{'subscription'}->{'days'} + 0.5);
 system "figlet -f roman \" $numofdays\" | head -7";
@@ -277,11 +276,11 @@ sub _mpv2 {
 }
 sub _curl {
     $apiresp = "";
-    #    print "@_&access_token=$at\n";
+    print "@_&access_token=$at\n" if ($debug);
     eval {
 	$apiresp = decode_json(`curl  -s -m20 --connect-timeout 2 "https://api.service-kp.com/@_&access_token=$at"`);
 	#die if ($apiresp eq "");
-	#	print Dumper($apiresp)
+	print Dumper($apiresp) if ($debug);
     } 
     or do {
 	eval {
@@ -328,14 +327,9 @@ sub _movie() {
     _api_mid();
     _start();
     _title();
-#    if($resume == 0) {
-#	_file();
-#	_subs();
-#    }
 }
 sub _serial() {
     $serial = 1;
-    #    print "Сериал...\n";
     if($resume == 0) {
 	if(!$luckynum) {
 	    _api();		
@@ -415,7 +409,6 @@ sub _serial() {
 	_api_mid();
 	_subs();
 	_resume_config();
-#	_file();
 	_mpv2();
 	$quit=0;
 	$delete = 1;
@@ -451,13 +444,12 @@ sub _serial() {
 }
 sub _title {
     $title[$c] = $apiresp_s_sezonami->{'item'}->{'title'};
-    print ("Название - $title[$c]\n");
+    print ("Название - $title[$c]\n") if ($debug);
     @title_split = split /\//, $title[$c];
     $title_split[1] =~ s/[\$\:\"]//g;
     $title_split[1] =~ s/^.//;
     $smartsnum = sprintf ("%02d", $seasonnum);
     $smartenum = sprintf ("%02d", $seria);
-    #    $title[$c] = "--force-media-title=\"".$title_split[1];
     if ($serial == 0 && $title_split[1]) {                               # Иностранное кино
 	@title_split[1] =~ s/^\ (.*)/$1/;
 	$title[$c] = "--force-media-title=\"".$title_split[1]."\"";
@@ -482,8 +474,6 @@ sub _title {
     }
     $title_c =~ s/[\$\:\"]//g;
     $title_split[1] =~ s/[\$\:\"]//g;
-
-    #   system("emacsclient -e (rename-buffer $title_c)");
 }
 sub _subs {
     @sub = ();
@@ -496,7 +486,7 @@ sub _subs {
 	    }
 	}
     }
-    #print "Сабы - @sub<=====\n";
+    print "Сабы - @sub<=====\n" if ($debug);
     if (!@sub) {
 	for($subs=0; $subs < scalar(@{$apiresp_mid->{'subtitles'}}); $subs++) {
 	    if ($apiresp_mid->{'subtitles'}[$subs]->{'lang'} eq 'rus') {
@@ -508,9 +498,9 @@ sub _subs {
     if ($us &&
 	$title_split[1] &&
 	!@sub) {
-	system("rm \"/tmp/$title_split[1]en.srt\"");
-	system("rm \"/tmp/$title_split[1] - $seasonnum"."x"."$seria.en.srt\"");
-	system("rm \"/tmp/$title_split[1].en.srt\"");
+	system("rm \"/tmp/$title_split[1]en.srt\" 2>&1 > /dev/null");
+	system("rm \"/tmp/$title_split[1] - $seasonnum"."x"."$seria.en.srt\" 2>&1 > /dev/null");
+	system("rm \"/tmp/$title_split[1].en.srt\" 2>&1 > /dev/null");
 	print "Работает subliminal\n";
 	if ($serial) {
 	    $subliminal_command = "cd /tmp; subliminal download -l eng \"$title_split[1].s$smartsnum"."e$smartenum\"";
@@ -530,7 +520,7 @@ sub _api {
     $apiresp_s_sezonami = $apiresp;
 }
 sub _api_mid {
-    #    print "api вызов====================================";
+    print "api вызов====================================" if ($debug); 
     _curl "v1/items/media-links?mid=$mid";
     $apiresp_mid = $apiresp;
 }
@@ -549,7 +539,7 @@ sub _file {
 	    $file = $apiresp_mid->{'files'}[$a]->{'url'}->{$ps} if ($apiresp_mid->{'files'}[$a]->{'quality'} eq "480p");
 	}
     }
-    print "$file ========================================\n";
+    print "$file ========================================\n" if ($debug);
     if ($ps eq "hls4") {
 	@notes = `curl -s $file`;
 #	$cdn = $file;
@@ -582,14 +572,12 @@ sub _audio {
 		$apiresp_s_sezonami->{'item'}->{'videos'}[$ver]->{'audios'}[$luckynum]) {
 		if ($serial) {
 		    $alang = $apiresp_s_sezonami->{'item'}->{'seasons'}[$season]->{'episodes'}[$c]->{'audios'}[$luckynum]->{'lang'};
-		    #	    $alink = `curl -s $cdn$note[20]| grep \\\<title\\\>Redire | sed -e s/\\\<title\\\>Redirecting\\\ to\/\/ | sed -e "s/<\\\/title>.*//" | sed -e "s/\ //g"`;
 		    $alink = $note[20].$note[21].$note[22];
 		    $atitle = $apiresp_s_sezonami->{'item'}->{'seasons'}[$season]->{'episodes'}[$c]->{'audios'}[$luckynum]->{'type'}->{'title'} || "null";
 		    
 		    $aauthor = $apiresp_s_sezonami->{'item'}->{'seasons'}[$season]->{'episodes'}[$c]->{'audios'}[$luckynum]->{'author'}->{'title'};
 		} else {
 		    $alang = $apiresp_s_sezonami->{'item'}->{'videos'}[$ver]->{'audios'}[$luckynum]->{'lang'};
-		    #	    $alink = `curl -s $cdn$note[20]| grep \\\<title\\\>Redire | sed -e s/\\\<title\\\>Redirecting\\\ to\/\/ | sed -e "s/<\\\/title>.*//" | sed -e "s/\ //g"`;
 		    $alink = $note[20].$note[21].$note[22];
 		    $atitle = $apiresp_s_sezonami->{'item'}->{'videos'}[$ver]->{'audios'}[$luckynum]->{'type'}->{'title'} || "Null";
 		    $aauthor = $apiresp_s_sezonami->{'item'}->{'videos'}[$ver]->{'audios'}[$luckynum]->{'author'}->{'title'};
@@ -687,11 +675,9 @@ sub _mpv {
     if ($ps eq "hls4") {
 	if($resume == 1) {
 		$command = "$mpv --x11-name=\"resume\" $afiles --fs=no --pause --loop-playlist=1 --no-resume-playback $start @title[$c] @sub '$file' --user-agent=$ua 2>&1";
-#	}
 	} else {
 		$command = "$mpv $afiles --loop-playlist=1 --no-resume-playback $start @title[$c] @sub '$file' --user-agent=$ua 2>&1";
-
-	    system("wmctrl -r :ACTIVE: -b remove,fullscreen");
+		system("wmctrl -r :ACTIVE: -b remove,fullscreen");
 	}
     } else {
 	print("$mpv --fs=no --pause --loop-playlist=1 $start @title[$c] @sub '$file' 2>&1\n");
@@ -721,9 +707,8 @@ sub _mpv {
 		$quit = 1;
 		$start2='';
 	       	$resume = 0;
-		if ($serial != 1) {
-		    $delete = 1;
-		    exit;
+		$delete = 1;
+		_resume_config();
 		}
 	    }
 	    if ($output =~ /.*quitAAA.*/) {
@@ -761,7 +746,7 @@ sub _mpv {
 sub _time {
     if($time_c == 0) {
 	return; }
-    #    print "Запись временной метки...";
+    print "Запись временной метки..." if ($debug);
     if ($serial == '0') {
 	$version = $ver + 1;
 	$timesave = 1;
