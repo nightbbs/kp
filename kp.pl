@@ -494,11 +494,11 @@ sub _subs {
 	}
     }	
     if ($us &&
-#	$title_split[1] &&
+	$title_split[1] &&
 	!@sub) {
-#	system("rm \"/tmp/$title_split[1]en.srt\"");
-#	system("rm \"/tmp/$title_split[1] - $seasonnum"."x"."$seria.en.srt\" > /dev/null");
-#	system("rm \"/tmp/$title_split[1].en.srt\" > /dev/null");
+	system("rm \"/tmp/$title_split[1]en.srt\" > /dev/null");
+	system("rm \"/tmp/$title_split[1] - $seasonnum"."x"."$seria.en.srt\" > /dev/null");
+	system("rm \"/tmp/$title_split[1].en.srt\" > /dev/null");
 	print "Работает subliminal\n";
 	if ($serial) {
 	    $subliminal_command = "cd /tmp; subliminal download -l eng \"$title_split[1].s$smartsnum"."e$smartenum\"";
