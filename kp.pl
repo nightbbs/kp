@@ -215,13 +215,11 @@ sub _resume_config {
     $delete = 0;
 }
 sub _start {
-    #if ($resume == 0) {
     _api();
-    #}
 
     if ($serial == 0) {
 	$time_c = 0;
-	#print "Время, записанное в апи: $apiresp_s_sezonami->{'item'}->{'videos'}[$ver-1]->{'watching'}->{'time'}, а общее - $apiresp_s_sezonami->{'item'}->{'videos'}[$ver-1]->{'duration'}";
+	print "Время, записанное в апи: $apiresp_s_sezonami->{'item'}->{'videos'}[$ver-1]->{'watching'}->{'time'}, а общее - $apiresp_s_sezonami->{'item'}->{'videos'}[$ver-1]->{'duration'}" if ($debug);
 	$time_c = $apiresp_s_sezonami->{'item'}->{'videos'}[$ver]->{'watching'}->{'time'} if ($apiresp_s_sezonami->{'item'}->{'videos'}[$ver]->{'watching'}->{'time'} <= $apiresp_s_sezonami->{'item'}->{'videos'}[$ver]->{'duration'}-10);
     } else {
 	$time_c = "0";
@@ -236,19 +234,19 @@ sub _start {
     if($serial == 0) {
 	if ($start2 =~ /\d+/ &&
 	    $time_c == 0 || $time_c == $apiresp_s_sezonami->{'item'}->{'videos'}[0]->{'duration'}) {
-	    #	    print "Устанавливаем старт $start2 вопреки апи";
-	    $start = "--start=".$start2;
+	    print "Устанавливаем старт $start2 вопреки апи" if ($debug);
+	    $start = $start2;
 	} else {
-	    $start = "--start=".$time_c;
+	    $start = $time_c;
 	} 
     }
     else {
 	if ($start2 =~ /\d+/ &&
 	    $time_c == 0 || $time_c == $apiresp_s_sezonami->{'item'}->{'seasons'}[$season]{'episodes'}[$c]->{'duration'}) {
-	    #	    print "Устанавливаем старт $start2 вопреки апи";
-	    $start = "--start=".$start2;
+	    print "Устанавливаем старт $start2 вопреки апи" if ($debug);
+	    $start = $start2;
 	} else {
-	    $start = "--start=".$time_c;
+	    $start = $time_c;
 	}
     }
     
@@ -516,7 +514,7 @@ sub _subs {
 sub _api {
     _curl("v1/items/$id?nolinks=1");
     $apiresp_s_sezonami = $apiresp;
-    print Dumper($apiresp) if ($debug);
+#    print Dumper($apiresp) if ($debug);
 }
 sub _api_mid {
     print "api вызов====================================" if ($debug); 
@@ -561,7 +559,7 @@ sub _file {
 sub _audio {
     $afirst = 1;
     $luckynum = 0;
-    $afiles = "--script-opts=\"";
+#    $afiles = "--script-opts=\"";
     $num = 1;
     $added = 0;
     $pq =~ s/p//;
@@ -667,20 +665,20 @@ sub _audio {
 	}
     }
 
-    $afiles = $afiles."\"";
+#    $afiles = $afiles."\"";
 }	
 sub _mpv {
     @output = 0;
     print "Проигрываем...\n";
     if ($ps eq "hls4") {
 	if($resume == 1) {
-		$command = "$mpv --x11-name=\"resume\" $afiles --fs=no --pause --loop-playlist=1 --no-resume-playback $start @title[$c] @sub '$file' --user-agent=$ua 2>&1";
+		$command = "$mpv --x11-name=\"resume\" --script-opts=\"start=$start,$afiles\" --fs=no --pause --loop-playlist=1 --no-resume-playback @title[$c] @sub '$file' --user-agent=$ua 2>&1";
 	} else {
-		$command = "$mpv $afiles --loop-playlist=1 --no-resume-playback $start @title[$c] @sub '$file' --user-agent=$ua 2>&1";
+	    $command = "$mpv --script-opts=\"start=$start,$afiles\" --loop-playlist=1 --no-resume-playback @title[$c] @sub '$file' --user-agent=$ua 2>&1";
 		system("wmctrl -r :ACTIVE: -b remove,fullscreen");
 	}
     } else {
-	print("$mpv --fs=no --pause --loop-playlist=1 $start @title[$c] @sub '$file' 2>&1\n");
+	print("$mpv --fs=no --pause --loop-playlist=1 --script-opts=\"start=$start,$afiles\" @title[$c] @sub '$file' 2>&1\n");
 	$command = "mpv --fs=no --pause --loop-playlist=1 $start @title[$c] @sub '$file' --user-agent=\"$ua\" 2>&1";
     }
 
