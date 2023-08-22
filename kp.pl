@@ -679,7 +679,7 @@ sub _mpv {
 	}
     } else {
 	print("$mpv --fs=no --pause --loop-playlist=1 --script-opts=\"start=$start,$afiles\" @title[$c] @sub '$file' 2>&1\n");
-	$command = "mpv --fs=no --pause --loop-playlist=1 $start @title[$c] @sub '$file' --user-agent=\"$ua\" 2>&1";
+	$command = "mpv --script-opts=\"start=$start,$afiles\" --fs=no --pause --loop-playlist=1 @title[$c] @sub '$file' --user-agent=\"$ua\" 2>&1";
     }
 
     print $command if ($debug);
