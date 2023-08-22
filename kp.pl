@@ -559,7 +559,7 @@ sub _file {
 sub _audio {
     $afirst = 1;
     $luckynum = 0;
-#    $afiles = "--script-opts=\"";
+    $afiles="";
     $num = 1;
     $added = 0;
     $pq =~ s/p//;
@@ -675,7 +675,7 @@ sub _mpv {
 		$command = "$mpv --x11-name=\"resume\" --script-opts=\"start=$start,$afiles\" --fs=no --pause --loop-playlist=1 --no-resume-playback @title[$c] @sub '$file' --user-agent=$ua 2>&1";
 	} else {
 	    $command = "$mpv --script-opts=\"start=$start,$afiles\" --loop-playlist=1 --no-resume-playback @title[$c] @sub '$file' --user-agent=$ua 2>&1";
-		system("wmctrl -r :ACTIVE: -b remove,fullscreen");
+	    system("wmctrl -r :ACTIVE: -b remove,fullscreen");
 	}
     } else {
 	print("$mpv --fs=no --pause --loop-playlist=1 --script-opts=\"start=$start,$afiles\" @title[$c] @sub '$file' 2>&1\n");
