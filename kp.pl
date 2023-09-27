@@ -19,11 +19,17 @@ sub _read_config {
     $mpv = $config->{kpc}->{mpv};
     $ua = $config->{kpc}->{user_agent};
     $cont = $config->{kpc}->{continuos_mode};
+    $mirror = $config->{_}->{mirror};
+    $flags = $config->{_}->{flags};
     $debug = $config->{_}->{debug};
     $da = $config->{_}->{debug_api};
 }
 _read_config();
-#print Dumper($apiresp);
+_curl("v1/watching/serials?subscribed=1");
+for($a = 0; $a < scalar(@{$apiresp->{'items'}}); $a++) {
+    print $apiresp->{'items'}[$a]->{'title'};
+    print "\n";
+}
 _curl("v1/user?");
 my $numofdays = int($apiresp->{'user'}->{'subscription'}->{'days'} + 0.5);
 system "figlet -f roman \" $numofdays\" | head -7";
@@ -204,16 +210,14 @@ sub _resume_config {
 	delete $resume_config->{_}->{"$id"};
     }
     if ($timesave == 0 && $serial == 0 && $delete == 0)  {
-	#	print "писюсю m, поскольку $timesave";
-	#	$resume_config->{_}->{"$id"} = "m,0";
+#	$resume_config->{_}->{"$id"} = "m,0";
     }
     if ($timesave == 0 && $serial == 0 && $ver =~ /[1-9]/ && $delete == 0 ) {
-	#	$resume_config->{_}->{"$id"} = "m,$ver";
+#	$resume_config->{_}->{"$id"} = "m,$ver";
     }
     if ($timesave == 0 && $serial == 1 && $delete == 0) {
-	#	$resume_config->{_}->{"$id"} = "s,$season,$c";
+#	$resume_config->{_}->{"$id"} = "s,$season,$c";
     }
-    
     $resume_config->write("$ENV{'HOME'}/.config/kp/kp.resume");
     $delete = 0;
 }
@@ -285,9 +289,7 @@ sub _curl {
     or do {
 	eval {
 	    print "РКН..";
-	    $apiresp = decode_json(`curl -m20 --proxy socks5://localhost:9050 -s "https://api.srvkp.com/@_&access_token=$at"`);
-	    #print Dumper($apiresp);
-	    #	    die if ($apiresp == "");
+	    $apiresp = decode_json(`curl -m20 $flags -s "https://api.srvkp.com/@_&access_token=$at"`);
 	} or do {
 	    print "А кинопаб-то лежит! (ну или просто инет отвалился)\n";
 	    _curl(@_);
@@ -296,7 +298,7 @@ sub _curl {
 }
 sub _movie() {
     _api();
-   #print "Кинцо...\n";
+    #print "Кинцо...\n";
     @sub=();
     $serial = 0;
     $n = 0;
@@ -445,7 +447,7 @@ sub _serial() {
 }
 sub _title {
     $title[$c] = $apiresp_s_sezonami->{'item'}->{'title'};
-    print ("Название - $title[$c]\n") if ($debug);
+    print ("Название - $title[$c]\n");
     @title_split = split /\//, $title[$c];
     $title_split[1] =~ s/[\$\:\"]//g;
     $title_split[1] =~ s/^.//;
@@ -554,57 +556,52 @@ sub _file {
 	for($a = 0; $a < scalar(@notes); $a++) {
 	    @note = split/[\=\,]/, @notes[$a];
 	    $pq =~ s/p//;
-		    if ($next) {
-			$file = "$note[0]$note[1]$note[2]";
-			$added = 1;
-			$next = 0;
-		    }
-		    if ($note[16] =~ "audio$pq") {
-			$bandwidth=$note[3];
-			$next = 1;
-		    }
+	    if ($next) {
+		$file = "$note[0]$note[1]$note[2]";
+		$added = 1;
+		$next = 0;
+	    }
+	    if ($note[16] =~ "audio$pq") {
+		$bandwidth=$note[3];
+		$next = 1;
+	    }
 	}
 	for($a = 0; $a < scalar(@notes); $a++) {
 	    @note = split/[\=\,]/, @notes[$a];
 	    $pq =~ s/p//;
-		    if ($next && !$added) {
-			$file = "$note[0]$note[1]$note[2]";
-			$added = 1;
-			$next = 0;
-		    }
-		    if ($note[16] =~ "audio720") {
-			$bandwidth=$note[3];
-			$next = 1;
-		    }
+	    if ($next && !$added) {
+		$file = "$note[0]$note[1]$note[2]";
+		$added = 1;
+		$next = 0;
+	    }
+	    if ($note[16] =~ "audio720") {
+		$bandwidth=$note[3];
+		$next = 1;
+	    }
 	}	for($a = 0; $a < scalar(@notes); $a++) {
 	    @note = split/[\=\,]/, @notes[$a];
 	    $pq =~ s/p//;
-		    if ($next && !$added) {
-			$file = "$note[0]$note[1]$note[2]";
-			$added = 1;
-			$next = 0;
-		    }
-		    if ($note[16] =~ "audio480") {
-			$bandwidth=$note[3];
-			$next = 1;
-		    }
+	    if ($next && !$added) {
+		$file = "$note[0]$note[1]$note[2]";
+		$added = 1;
+		$next = 0;
+	    }
+	    if ($note[16] =~ "audio480") {
+		$bandwidth=$note[3];
+		$next = 1;
+	    }
 	}
 	_audio();
     }
     if ($ps eq "site") {
-	print "Выполняем curl -b \"token=$token\; _identity=$identity\" -s https://kinopub.icu/item/view/$id/s${seasonnum}e$seria\n" if ($debug);
-	@tempfile = `curl -b \"token=$token\; _identity=$identity\" -s \"https://kinopub.icu/item/view/$id/s${seasonnum}e$seria\"`;
+	print "Выполняем curl $flags -b \"token=$token\; _identity=$identity\" -s $mirror/item/view/$id/s${seasonnum}e$seria\n" if ($debug);
+	@tempfile = `curl $flags -b \"token=$token\; _identity=$identity\" -s \"$mirror/item/view/$id/s${seasonnum}e$seria\"`;
 	@tempfile1 = grep ( /var\ playlist/, @tempfile);
 	@tempfile1[0] =~ s/var playlist = //;
-	@tempfile1[0] =~ s/;//;
-#	print @tempfile1[0];
+	@tempfile1[0] =~ s/;\n//;
 	$tempfile2 = decode_json(@tempfile1[0]);
-#	$Data::Dumper::Useqq = 1; 
-#	print Dumper($tempfile2);
 	$tempfile3 = $tempfile2->[$c]->{'file'};
-#	print "========================= $tempfile3";
-	#    @tempfile1[0] =~ s/",".*//;
-	print "Команда curl -b \"token=$token;_ident=$phpsessid\" https://kinopub.icu/item/view/3964/ -s | grep var\ playlist | sed -e s/var\ playlist\ =\ \[{\"file\":\"// | sed -e s/\",\".*//\" вывела $tempfile3\n" if ($debug);
+	print "Команда curl $flags -b \"token=$token\; _identity=$identity\" -s \"$mirror/item/view/$id/s${seasonnum}e$seria\" | grep var\ playlist | sed -e s/var\ playlist\ =\ \[{\"file\":\"// | sed -e s/\",\".*//\" вывела $tempfile3\n" if ($debug);
 	@notes = `curl -s $tempfile3`;
 	#	$cdn = $file;
 	#	$cdn =~ s/^(.*\.net).*$/$1/;
@@ -613,49 +610,51 @@ sub _file {
 	for($a = 0; $a < scalar(@notes); $a++) {
 	    @note = split/[\=\,]/, @notes[$a];
 	    $pq =~ s/p//;
-		    if ($next) {
-			$file = "$note[0]$note[1]$note[2]";
-			#$file = @note;
-			$added = 1;
-			$next = 0;
-		    }
-		    if ($note[16] =~ "audio$pq") {
-			$bandwidth=$note[3];
-			$next = 1;
-		    }
+	    if ($next) {
+		$file = "$note[0]\=$note[1]";
+		$added = 1;
+		$next = 0;
+	    }
+	    if ($note[16] =~ "audio$pq") {
+		$bandwidth=$note[3];
+		$next = 1;
+	    }
 	}
 	$next = 0;
 	for($a = 0; $a < scalar(@notes); $a++) {
 	    @note = split/[\=\,]/, @notes[$a];
 	    if ($next && !$added) {
-			$file = "$note[0]$note[1]$note[2]";
-			$added = 1;
-			$next = 0;
-		    }
+		$file = "$note[0]\=$note[1]";
+		$added = 1;
+		$next = 0;
+	    }
 	    if ($note[16] =~ "audio720" && !$added) {
-			$bandwidth=$note[3];
-			$next = 1;
-		    }
+		$bandwidth=$note[3];
+		$next = 1;
+	    }
 	}
 	$next = 0;
 	for($a = 0; $a < scalar(@notes); $a++) {
-	    @note = split/[\=\,]/, @notes[$a];
-	    if ($next && !$added) {
-			$file = "$note[0]$note[1]$note[2]";
-			$added = 1;
-			$next = 0;
-		    }
-	    if ($note[16] =~ "audio480" && !$added) {
-			$bandwidth=$note[3];
-			$next = 1;
-		    }
+	    @note = split/[\=\,]/, $notes[$a] if ($notes[$a]);
+	    if ($next == 1 and
+		!$added) {
+		$file = "$note[0]\=$note[1]";
+		$added = 1;
+		$next = 0;
+	    }
+	    if ($note[14] =~ /audio480/ or
+		$note[16] =~ /audio480/
+		) {
+		$bandwidth=$note[3];
+		$next = 1;
+	    }
 	}
-	$next = 0;
 	_audio();
     }
 }
 sub _audio {
     @note = '';
+    $next = 0;
     $stop = 0;
     $afirst = 1;
     $luckynum = 0;
@@ -665,7 +664,7 @@ sub _audio {
     $pq =~ s/p//;
     for($a = 0; $a < scalar(@notes); $a++) {
 	@note = split /=|,/, @notes[$a];
-	if (@note[3] eq 'audio$pq') {
+	if (@note[3] =~ /audio$pq/) {
 	    if ($apiresp_s_sezonami->{'item'}->{'seasons'}[$season]->{'episodes'}[$c]->{'audios'}[$luckynum]||
 		$apiresp_s_sezonami->{'item'}->{'videos'}[$ver]->{'audios'}[$luckynum]) {
 		if ($serial) {
@@ -679,7 +678,7 @@ sub _audio {
 		    $atitle = $apiresp_s_sezonami->{'item'}->{'videos'}[$ver]->{'audios'}[$luckynum]->{'type'}->{'title'} || "Null";
 		    $aauthor = $apiresp_s_sezonami->{'item'}->{'videos'}[$ver]->{'audios'}[$luckynum]->{'author'}->{'title'};
 		}
-#		chomp $alink;
+		chomp $alink;
 		if ($afirst) {
 		    $afiles = $afiles."aud1\=$alink|$atitle ($aauthor)|$alang" if($aauthor);
 		    $afiles = $afiles."aud1\=$alink|$atitle|$alang" if(!$aauthor);
@@ -698,9 +697,7 @@ sub _audio {
     for($a = 0; $a < scalar(@notes); $a++) {
 	@note = split /=|,/, @notes[$a];
  	if ($note[3] =~ "audio720" and
-	    $stop == 0 
-	    #    !$added
-	    ) {
+	    !$added) {
 	    if ($apiresp_s_sezonami->{'item'}->{'seasons'}[$season]->{'episodes'}[$c]->{'audios'}[$luckynum]||
 		$apiresp_s_sezonami->{'item'}->{'videos'}[$ver]->{'audios'}[$luckynum]) {
 		if ($serial) {
@@ -729,11 +726,9 @@ sub _audio {
 	    }
 	}
     }
-    $stop = 1 if ($added);
     for($a = 0; $a < scalar(@notes); $a++) {
 	@note = split /=|,/, @notes[$a];
-	if ($note[3] eq "audio480" && $stop == 0 and
-	    !$added) {
+	if ($note[3] =~ /audio480/ && !$added) {
 	    if ($apiresp_s_sezonami->{'item'}->{'seasons'}[$season]->{'episodes'}[$c]->{'audios'}[$luckynum]||
 		$apiresp_s_sezonami->{'item'}->{'videos'}[$ver]->{'audios'}[$luckynum]) {
 		if ($serial) {
@@ -743,11 +738,11 @@ sub _audio {
 		    $aauthor = $apiresp_s_sezonami->{'item'}->{'seasons'}[$season]->{'episodes'}[$c]->{'audios'}[$luckynum]->{'author'}->{'title'};
 		} else {
 		    $alang = $apiresp_s_sezonami->{'item'}->{'videos'}[$ver]->{'audios'}[$luckynum]->{'lang'};
-		    $alink = "lala";
+		    $alink = $note[9]."=".$note[10];
 		    $atitle = $apiresp_s_sezonami->{'item'}->{'videos'}[$ver]->{'audios'}[$luckynum]->{'type'}->{'title'} || "Null";
 		    $aauthor = $apiresp_s_sezonami->{'item'}->{'videos'}[$ver]->{'audios'}[$luckynum]->{'author'}->{'title'};
 		}
-#		chomp $alink;
+		chomp $alink;
 		if ($afirst) {
 		    $afiles = $afiles."aud1\=$alink|$atitle ($aauthor)|$alang" if($aauthor);
 		    $afiles = $afiles."aud1\=$alink|$atitle|$alang" if(!$aauthor);
@@ -799,7 +794,7 @@ sub _mpv {
 		print "ВЫХОД!!!\n";
 		exit;
 	    }
-	    if ($output =~ /.*End of file.*/) {
+	    if ($output =~ /Exiting\.\.\.\ \(End of file\)/) {
 		$quit = 1;
 		$start2='';
 	       	$resume = 0;
@@ -820,12 +815,12 @@ sub _mpv {
 		    _resume_config();
 		}
 	    }
-	    if (($output =~ /.*AV:.*/) && ($numofiterations > 1500)) {
+	    if (($output =~ /.*AV:.*/) && ($numofiterations > 1600)) {
 		$output = substr $output, 0;
 		$output =~ s/.*AV..(........)/$1/ ;
 		$time = $output;
 		_timeconv();
-		_time();
+		_time() if ($time_c != $lasttime);
 		$output = "";
 		$numofiterations = 0;
 	    } else {
@@ -844,12 +839,14 @@ sub _time {
     if ($serial == '0') {
 	$version = $ver + 1;
 	$timesave = 1;
+	$lasttime = $time_c;
 	_resume_config();
 	_curl("v1/watching/marktime?id=$id&time=$time_c&video=$version");
     }              # запись временной метки
     
     else{
 	$timesave = 1;
+	$lasttime = $time_c;
 	_resume_config();
 	_curl("v1/watching/marktime?id=$id&time=$time_c&season=$seasonnum&video=$seria");
     }               # запись временной метки для сериала
