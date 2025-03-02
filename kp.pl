@@ -16,6 +16,7 @@ sub _read_config {
     $pq = $config->{kpc}->{preferred_quality};
     $ps = $config->{kpc}->{preferred_stream};
     $us = $config->{kpc}->{use_subliminal};
+    $subliminal = $config->{kpc}->{subliminal};
     $mpv = $config->{kpc}->{mpv};
     $ua = $config->{kpc}->{user_agent};
     $cont = $config->{kpc}->{continuos_mode};
@@ -77,7 +78,7 @@ if($resume == 1)
 		$start2 = $data[3];
 		$id = $data[0];
 		_movie();
-		_start();
+#		_start();
 		_file();
 #		_subs();
 		_mpv2();
@@ -308,20 +309,21 @@ sub _mpv2 {
 sub _curl {
     $apiresp = "";
     print "@_[0]&access_token=$at\n" if ($debug);
-    eval {
-	$apiresp = decode_json(`curl --json \"@_[1]\" \"https://api.srvkp.com/@_[0]&access_token=$at\"`) if ($POST);
+   eval {
+#	$apiresp = decode_json(`curl --json \"@_[1]\" \"https://api.srvkp.com/@_[0]&access_token=$at\"`) if ($POST);
 	$POST=0;
-	$apiresp = decode_json(`curl -H \"User-Agent: $ua\" -s -m20 --connect-timeout 2 \"$mirror_api/@_&access_token=$at\"`);
-    } 
+	$apiresp = decode_json(`curl $flags -H \"User-Agent: $ua\" --connect-timeout 2 -s "$mirror_api/@_&access_token=$at"`);
+	#$apiresp = decode_json(`curl -H \"User-Agent: $ua\" -s -m20 --connect-timeout 2 \"$mirror_api/@_&access_token=$at\"`);
+  } 
     or do {
-	eval {
-	    print "РКН..";
-	    $apiresp = decode_json(`curl -m20 $flags -s "$mirror_api/@_&access_token=$at"`);
-	} or do {
+#	eval {
+#	    print "censoreship..";
+#	    $apiresp = decode_json(`curl $flags -s "$mirror_api/@_&access_token=$at"`);
+#	} or do {
 	    print "А кинопаб-то лежит! (ну или просто инет отвалился)\n";
 	    _curl(@_);
-	}
-    }
+#	}
+ }
 }
 sub _movie() {
     _api();
@@ -537,11 +539,11 @@ sub _subs {
 	system("rm \"/tmp/$title_split[1].en.srt\" > /dev/null");
 	print "Работает subliminal\n";
 	if ($serial) {
-	    $subliminal_command = "cd /tmp; subliminal download -l eng \"$title_split[1].s$smartsnum"."e$smartenum\"";
+	    $subliminal_command = "cd /tmp; $subliminal \"$title_split[1].s$smartsnum"."e$smartenum\"";
 	} else {
-	    $subliminal_command = "cd /tmp; subliminal download -l eng \"$title_split[1]\"";	
+	    $subliminal_command = "cd /tmp; $subliminal \"$title_split[1]\"";	
 	}
-	print "$subliminal_command \n";
+	print "$subliminal_command \n" if ($debug);
 	system($subliminal_command);
 	@sub[7] = " --sub-file=\"/tmp/$title_split[1]en.srt\"";
 	@sub[8] = " --sub-file=\"/tmp/$title_split[1] - $seasonnum"."x"."$seria.en.srt\"";
@@ -578,7 +580,7 @@ sub _file {
     }
     print "$file\n" if ($debug);
     if ($ps eq "hls4") {
-	@notes = `curl -s $file`;
+	@notes = `curl -Ls $file`;
 	#	$cdn = $file;
 	#	$cdn =~ s/^(.*\.net).*$/$1/;
 	$bandwidth=0;
@@ -791,7 +793,14 @@ sub _audio {
 	}
     }
     $added = 1;
-}	
+}
+sub _similar {
+    _curl("v1/items/similar?id=$id");
+}
+sub _subscribe {
+    _curl("v1/watching/togglewatchlist?id=$id");
+    print "Изменена отметка \"буду смотреть\" для $id\n";
+}
 sub _mpv {
     @output = 0;
     print "Проигрываем...\n";
@@ -810,7 +819,7 @@ sub _mpv {
 	    $command = "$mpv --pause --script-opts=\"unpause=1,start=$start,$afiles\" --loop-playlist=1 --no-resume-playback --fullscreen=yes @title[$c] @sub --user-agent='$ua' \"$file\" 2>&1";
 	    #system("wmctrl -r :ACTIVE: -b remove,maximized_vert,maximized_horz");
 	    system("xdotool key super+2");
-	    system("wmctrl -r :ACTIVE: -b remove,fullscreen");
+#	    system("wmctrl -r :ACTIVE: -b remove,fullscreen");
 	}
     } else {
 	$command = "$mpv --script-opts=\"start=$start,$afiles\" --fullscreen=no --pause --loop-playlist=1 @title[$c] @sub '$file' --user-agent=\"$ua\" 2>&1";
@@ -845,6 +854,7 @@ sub _mpv {
 	       	$resume = 0;
 		$delete = 1;
 		_resume_config();
+		exit(0) if ($serial != 1);
 	    }
 	    if ($output =~ /.*quitAAA.*/) {
 		$quit = 1;
@@ -860,20 +870,27 @@ sub _mpv {
 		    _resume_config();
 		}
 	    }
+	    if ($output =~ /.*subscribe.*/) {
+		if ($serial != 1) {
+		}
+		else {
+		    _subscribe();
+		}
+	    }
 	    if ($output =~ /.*quitBBB.*/) {
 		$quit = 1;
 		$start2='';
-		$c=$c-2;
+		$c=$c-1;
 		$resume = 0;
 		_read_config();
-		if ($serial != 1) {
-		    $delete = 1;
+#		if ($serial != 1) {
+#		    $delete = 1;
 #		    _resume_config();
-		    exit;
-		}
-		else {
+#		    exit;
+#		}
+#		else {
 #		    _resume_config();
-		}
+#		}
 	    }
     	    if (($output =~ /.*AV:.*/) && ($numofiterations > 1600)) {
 		$output = substr $output, 0;
