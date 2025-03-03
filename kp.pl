@@ -312,7 +312,7 @@ sub _curl {
    eval {
 #	$apiresp = decode_json(`curl --json \"@_[1]\" \"https://api.srvkp.com/@_[0]&access_token=$at\"`) if ($POST);
 	$POST=0;
-	$apiresp = decode_json(`curl $flags -H \"User-Agent: $ua\" --connect-timeout 2 -s "$mirror_api/@_&access_token=$at"`);
+	$apiresp = decode_json(`curl $flags -H \"User-Agent: $ua\" -Ls "$mirror_api/@_&access_token=$at"`);
 	#$apiresp = decode_json(`curl -H \"User-Agent: $ua\" -s -m20 --connect-timeout 2 \"$mirror_api/@_&access_token=$at\"`);
   } 
     or do {
@@ -553,6 +553,7 @@ sub _subs {
 }
 sub _api {
     _curl("v1/items/$id?nolinks=1");
+#    _curl("v1/items/$id?");
     $apiresp_s_sezonami = $apiresp;
     print Dumper($apiresp) if ($da);
 }
@@ -821,8 +822,14 @@ sub _mpv {
 	    system("xdotool key super+2");
 #	    system("wmctrl -r :ACTIVE: -b remove,fullscreen");
 	}
-    } else {
-	$command = "$mpv --script-opts=\"start=$start,$afiles\" --fullscreen=no --pause --loop-playlist=1 @title[$c] @sub '$file' --user-agent=\"$ua\" 2>&1";
+    } elsif ($ps eq "http") {
+	if($resume == 1 or
+	   $nt == 1) {
+	    $command = "$mpv --start=$start --fullscreen=no --pause --loop-playlist=1 @title[$c] @sub '$file' --user-agent=\"$ua\" 2>&1";
+	}
+	else {
+	    $command = "$mpv --start=$start --fullscreen=yes --loop-playlist=1 @title[$c] @sub '$file' --user-agent=\"$ua\" 2>&1";
+	}
     }
 
     print $command if ($debug);
