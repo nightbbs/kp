@@ -45,7 +45,7 @@ while ($a < $items) {
     print ", Kinopub: $apiresp_neweps->{'items'}[$a]{'rating'}" if($apiresp_neweps->{'items'}[$a]{'rating'});
     print "\n";
     $a++;
-    }
+}
 
 
 _curl("v1/user?");
@@ -78,9 +78,9 @@ if($resume == 1)
 		$start2 = $data[3];
 		$id = $data[0];
 		_movie();
-#		_start();
+		#		_start();
 		_file();
-#		_subs();
+		#		_subs();
 		_mpv2();
 	    }
 	    if ($data[1] =~ 's') {
@@ -98,11 +98,11 @@ if($resume == 1)
     }
 } else {
     $n = 0;
-      _curl("v1/items?type=movie&sort=created-");
-        $apiresp_new = $apiresp;
-        $items = $apiresp_new->{'pagination'}->{'perpage'};
-        $yesterday = time() - 172400;
-        while ($n < $items) {
+    _curl("v1/items?type=movie&sort=created-");
+    $apiresp_new = $apiresp;
+    $items = $apiresp_new->{'pagination'}->{'perpage'};
+    $yesterday = time() - 172400;
+    while ($n < $items) {
 	if ($apiresp_new->{'items'}[$n]->{'created_at'} > $yesterday) {
 	    print $a + 1, " - (*) ", $apiresp_new->{'items'}[$a]->{'title'};
 	    print " \($apiresp_new->{'items'}[$a]{'year'}\)" if($apiresp_new->{'items'}[$a]{'year'});
@@ -114,10 +114,10 @@ if($resume == 1)
 	    $newmovies = $a;
 	}
 	$n++;
-        }
-        $n = 0;
+    }
+    $n = 0;
     # 
-     _curl("v1/items?type=serial&sort=created-");
+    _curl("v1/items?type=serial&sort=created-");
     $apiresp_news = $apiresp;
     $items = $apiresp_news->{'pagination'}->{'perpage'};
     while ($n < $items) {
@@ -132,7 +132,7 @@ if($resume == 1)
 	    $newserials = $a - $newmovies;
 	}
 	$n++;
-   }
+    }
     $apiresp = ();
     $a = 0;
     $apiresp->{'pagination'}{'total'} = 0;
@@ -166,7 +166,7 @@ if($resume == 1)
 		_api();
 		$quit = 0;
 		_movie();
-#		_subs();
+		#		_subs();
 		_mpv2();
 	    } else {
 		$id = $apiresp_news->{'items'}[$luckynum-$newmovies-1]{'id'};
@@ -238,13 +238,13 @@ sub _resume_config {
 	delete $resume_config->{_}->{"$id"};
     }
     if ($timesave == 0 && $serial == 0 && $delete == 0)  {
-#	$resume_config->{_}->{"$id"} = "m,0";
+	#	$resume_config->{_}->{"$id"} = "m,0";
     }
     if ($timesave == 0 && $serial == 0 && $ver =~ /[1-9]/ && $delete == 0 ) {
-#	$resume_config->{_}->{"$id"} = "m,$ver";
+	#	$resume_config->{_}->{"$id"} = "m,$ver";
     }
     if ($timesave == 0 && $serial == 1 && $delete == 0) {
-#	$resume_config->{_}->{"$id"} = "s,$season,$c";
+	#	$resume_config->{_}->{"$id"} = "s,$season,$c";
     }
     $resume_config->write("$ENV{'HOME'}/.config/kp/kp.resume");
     $delete = 0;
@@ -309,21 +309,21 @@ sub _mpv2 {
 sub _curl {
     $apiresp = "";
     print "@_[0]&access_token=$at\n" if ($debug);
-   eval {
-#	$apiresp = decode_json(`curl --json \"@_[1]\" \"https://api.srvkp.com/@_[0]&access_token=$at\"`) if ($POST);
+    eval {
+	#	$apiresp = decode_json(`curl --json \"@_[1]\" \"https://api.srvkp.com/@_[0]&access_token=$at\"`) if ($POST);
 	$POST=0;
 	$apiresp = decode_json(`curl $flags -H \"User-Agent: $ua\" -Ls "$mirror_api/@_&access_token=$at"`);
 	#$apiresp = decode_json(`curl -H \"User-Agent: $ua\" -s -m20 --connect-timeout 2 \"$mirror_api/@_&access_token=$at\"`);
-  } 
+    } 
     or do {
-#	eval {
-#	    print "censoreship..";
-#	    $apiresp = decode_json(`curl $flags -s "$mirror_api/@_&access_token=$at"`);
-#	} or do {
-	    print "А кинопаб-то лежит! (ну или просто инет отвалился)\n";
-	    _curl(@_);
-#	}
- }
+	#	eval {
+	#	    print "censoreship..";
+	#	    $apiresp = decode_json(`curl $flags -s "$mirror_api/@_&access_token=$at"`);
+	#	} or do {
+	print "А кинопаб-то лежит! (ну или просто инет отвалился)\n";
+	_curl(@_);
+	#	}
+    }
 }
 sub _movie() {
     _api();
@@ -553,7 +553,7 @@ sub _subs {
 }
 sub _api {
     _curl("v1/items/$id?nolinks=1");
-#    _curl("v1/items/$id?");
+    #    _curl("v1/items/$id?");
     $apiresp_s_sezonami = $apiresp;
     print Dumper($apiresp) if ($da);
 }
@@ -565,7 +565,7 @@ sub _api_mid {
 }
 sub _file {
     $file = 0;
-#    $pq = "720p" if ($title[$c] =~ "Seinfeld");
+    #    $pq = "720p" if ($title[$c] =~ "Seinfeld");
     for($a=0; $a < scalar(@{$apiresp_mid->{'files'}}); $a++) {
 	$file = $apiresp_mid->{'files'}[$a]->{'url'}->{$ps} if ($apiresp_mid->{'files'}[$a]->{'quality'} eq $pq);
     }
@@ -580,6 +580,13 @@ sub _file {
 	}
     }
     print "$file\n" if ($debug);
+    $beginning = $file;
+    $beginning =~ s/(.*)\/master-v1a1\.m3u.*/$1/;	
+    print "$beginning\n" if ($debug);
+    if ($ps eq "hls") {
+	_audio_hls();
+    }
+
     if ($ps eq "hls4") {
 	@notes = `curl -Ls $file`;
 	#	$cdn = $file;
@@ -795,6 +802,51 @@ sub _audio {
     }
     $added = 1;
 }
+sub _audio_hls {
+    @note = '';
+    $next = 0;
+    $stop = 0;
+    $afirst = 1;
+    $luckynum = 0;
+    $afiles="";
+    $num = 1;
+    $added = 0;
+    $pq =~ s/p//;
+    if ($serial) {
+	$number = @{($apiresp_s_sezonami->{'item'}->{'seasons'}[$season]->{'episodes'}[$c]->{'audios'})};
+    } else {
+	$number = @{($apiresp_s_sezonami->{'item'}->{'videos'}[$ver]->{'audios'})};
+    }
+    for($a = 0; $a < $number; $a++) {
+	    if ($apiresp_s_sezonami->{'item'}->{'seasons'}[$season]->{'episodes'}[$c]->{'audios'}[$luckynum]||
+		$apiresp_s_sezonami->{'item'}->{'videos'}[$ver]->{'audios'}[$luckynum]) {
+		if ($serial) {
+		    $alang = $apiresp_s_sezonami->{'item'}->{'seasons'}[$season]->{'episodes'}[$c]->{'audios'}[$luckynum]->{'lang'};
+		    $alink = "$beginning/index-a".$apiresp_s_sezonami->{'item'}->{'seasons'}[$season]->{'episodes'}[$c]->{'audios'}[$luckynum]->{'index'}.".m3u8?loc=nl";
+		    $atitle = $apiresp_s_sezonami->{'item'}->{'seasons'}[$season]->{'episodes'}[$c]->{'audios'}[$luckynum]->{'type'}->{'title'} || "null";
+		    $aauthor = $apiresp_s_sezonami->{'item'}->{'seasons'}[$season]->{'episodes'}[$c]->{'audios'}[$luckynum]->{'author'}->{'title'};
+		} else {
+		    $alang = $apiresp_s_sezonami->{'item'}->{'videos'}[$ver]->{'audios'}[$luckynum]->{'lang'};
+		    $alink = "$beginning/index-a".$apiresp_s_sezonami->{'item'}->{'videos'}[$ver]->{'audios'}[$luckynum]->{'index'}.".m3u8?loc=nl";
+		    $atitle = $apiresp_s_sezonami->{'item'}->{'videos'}[$ver]->{'audios'}[$luckynum]->{'type'}->{'title'} || "Null";
+		    $aauthor = $apiresp_s_sezonami->{'item'}->{'videos'}[$ver]->{'audios'}[$luckynum]->{'author'}->{'title'};
+		}
+		chomp $alink;
+		if ($afirst) {
+		    $afiles = $afiles."aud1\=$alink|$atitle ($aauthor)|$alang" if($aauthor);
+		    $afiles = $afiles."aud1\=$alink|$atitle|$alang" if(!$aauthor);
+		    $afirst = 0;
+		    $added = 1;
+		} else {
+		    $afiles = $afiles.",aud$num\=$alink|$atitle ($aauthor)|$alang" if($aauthor);
+		    $afiles = $afiles.",aud$num\=$alink|$atitle|$alang" if(!$aauthor);
+		}
+		$num++;
+		$luckynum++;
+	    }
+    $added = 1;
+    }
+}
 sub _similar {
     _curl("v1/items/similar?id=$id");
 }
@@ -808,11 +860,12 @@ sub _mpv {
     _api_mid() if($nt);
     _file() if($nt);
     if ($ps eq "hls4" or
+	$ps eq "hls" or
 	$ps eq "site") {
 	if($resume == 1 or
 	   $nt == 1) {
 	    #$command = "$mpv --x11-name=\"resume\" --script-opts=\"unpause=0,start=$start,$afiles\" --window-maximized=no --pause --loop-playlist=1 --no-resume-playback @title[$c] @sub  --user-agent='$ua' \"$file\" 2>&1";
-#	    system("wmctrl -r :ACTIVE: -b remove,fullscreen");
+	    #	    system("wmctrl -r :ACTIVE: -b remove,fullscreen");
 	    $command = "$mpv --x11-name=\"resume\" --script-opts=\"unpause=0,start=$start,$afiles\" --fullscreen=no --pause --loop-playlist=1 --no-resume-playback @title[$c] @sub  --user-agent='$ua' \"$file\" 2>&1";
 	    $resume = 0;
 	    $nt = 0;
@@ -820,7 +873,7 @@ sub _mpv {
 	    $command = "$mpv --pause --script-opts=\"unpause=1,start=$start,$afiles\" --loop-playlist=1 --no-resume-playback --fullscreen=yes @title[$c] @sub --user-agent='$ua' \"$file\" 2>&1";
 	    #system("wmctrl -r :ACTIVE: -b remove,maximized_vert,maximized_horz");
 	    system("xdotool key super+2");
-#	    system("wmctrl -r :ACTIVE: -b remove,fullscreen");
+	    #	    system("wmctrl -r :ACTIVE: -b remove,fullscreen");
 	}
     } elsif ($ps eq "http") {
 	if($resume == 1 or
@@ -830,119 +883,122 @@ sub _mpv {
 	else {
 	    $command = "$mpv --start=$start --fullscreen=yes --loop-playlist=1 @title[$c] @sub '$file' --user-agent=\"$ua\" 2>&1";
 	}
-    }
+	
+ 
 
-    print $command if ($debug);
-    open($fh, "-|", $command);
-    binmode($fh,":encoding(UTF-8)");
-    $numofiterations = 0;
-    $time_c = 0;
-    $fs = 0;
-    while (read $fh, $char, 1) {
-	$numofiterations++;
-	if (($char eq "\n") || ($char eq "\e")) {
-	    $output = $output . "\n";
-	    if (($output =~ /.*AV:.*/) && ($fs != 1) && ($resume != 1)) {
-		$fs = 1;
-	    }
-	    if ($output =~ /.*ragequit.*/) {
-		$delete = 1;
-		_resume_config();
-		print "ВЫХОД!!!\n";
-		exit;
-	    }
-	    if ($output =~ /Failed\ to\ open/) {
-		$nt = 1;
-	    }
-		
-	    if ($output =~ /Exiting\.\.\.\ \(End of file\)/) {
-		$quit = 1;
-		$start2='';
-	       	$resume = 0;
-		$delete = 1;
-		_resume_config();
-		exit(0) if ($serial != 1);
-	    }
-	    if ($output =~ /.*quitAAA.*/) {
-		$quit = 1;
-		$start2='';
-		$resume = 0;
-		_read_config();
-		if ($serial != 1) {
+	} 	
+
+	print $command if ($debug);
+	open($fh, "-|", $command);
+	binmode($fh,":encoding(UTF-8)");
+	$numofiterations = 0;
+	$time_c = 0;
+	$fs = 0;
+	while (read $fh, $char, 1) {
+	    $numofiterations++;
+	    if (($char eq "\n") || ($char eq "\e")) {
+		$output = $output . "\n";
+		if (($output =~ /.*AV:.*/) && ($fs != 1) && ($resume != 1)) {
+		    $fs = 1;
+		}
+		if ($output =~ /.*ragequit.*/) {
 		    $delete = 1;
 		    _resume_config();
+		    print "ВЫХОД!!!\n";
 		    exit;
 		}
-		else {
+		if ($output =~ /Failed\ to\ open/) {
+		    $nt = 1;
+		}
+		
+		if ($output =~ /Exiting\.\.\.\ \(End of file\)/) {
+		    $quit = 1;
+		    $start2='';
+		    $resume = 0;
+		    $delete = 1;
 		    _resume_config();
+		    exit(0) if ($serial != 1);
 		}
-	    }
-	    if ($output =~ /.*subscribe.*/) {
-		if ($serial != 1) {
+		if ($output =~ /.*quitAAA.*/) {
+		    $quit = 1;
+		    $start2='';
+		    $resume = 0;
+		    _read_config();
+		    if ($serial != 1) {
+			$delete = 1;
+			_resume_config();
+			exit;
+		    }
+		    else {
+			_resume_config();
+		    }
 		}
-		else {
-		    _subscribe();
+		if ($output =~ /.*subscribe.*/) {
+		    if ($serial != 1) {
+		    }
+		    else {
+			_subscribe();
+		    }
 		}
-	    }
-	    if ($output =~ /.*quitBBB.*/) {
-		$quit = 1;
-		$start2='';
-		$c=$c-1;
-		$resume = 0;
-		_read_config();
-#		if ($serial != 1) {
-#		    $delete = 1;
-#		    _resume_config();
-#		    exit;
-#		}
-#		else {
-#		    _resume_config();
-#		}
-	    }
-    	    if (($output =~ /.*AV:.*/) && ($numofiterations > 1600)) {
-		$output = substr $output, 0;
+		if ($output =~ /.*quitBBB.*/) {
+		    $quit = 1;
+		    $start2='';
+		    $c=$c-1;
+		    $resume = 0;
+		    _read_config();
+		    #		if ($serial != 1) {
+		    #		    $delete = 1;
+		    #		    _resume_config();
+		    #		    exit;
+		    #		}
+		    #		else {
+		    #		    _resume_config();
+		    #		}
+		}
+		if (($output =~ /.*AV:.*/) && ($numofiterations > 1600)) {
+		    $output = substr $output, 0;
 
-		$output =~ s/.*AV..(........)/$1/ ;
-		$time = $output;
-		_timeconv();
-		_time() if ($time_c != $lasttime);
-		$output = "";
-		$numofiterations = 0;
+		    $output =~ s/.*AV..(........)/$1/ ;
+		    $time = $output;
+		    _timeconv();
+		    _time() if ($time_c != $lasttime);
+		    $output = "";
+		    $numofiterations = 0;
+		} else {
+		    $output = "";
+		}
 	    } else {
-		$output = "";
+		#	    		print $output if($debug);
+		$output = $output . $char;
 	    }
-	} else {
-#	    		print $output if($debug);
-	    $output = $output . $char;
 	}
+	
+	close $fh;
     }
-	    
-    close $fh;
-}
-sub _time {
-    if($time_c == 0) {
-	return; }
-    print "Запись временной метки..." if ($debug);
-    if ($serial == 0) {
-	$version = $ver + 1;
-	$timesave = 1;
-	$lasttime = $time_c;
-	_resume_config();
-	_curl("v1/watching/marktime?id=$id&time=$time_c&video=$version");
-    }              # запись временной метки
-    
-    else{
-	$timesave = 1;
-	$lasttime = $time_c;
-	_resume_config();
-	_curl("v1/watching/marktime?id=$id&time=$time_c&season=$seasonnum&video=$seria");
-    }               # запись временной метки для сериала
-}
-sub _timeconv {
-    $secs = $time;
-    $mins = $time;
-    $hours = $time;
-    $secs =~ s/.*:.*:(.*)/$1/;
-    $mins =~ s/.*:(.*):.*/$1/;
-    $hours =~ s/(.*):.*:.*/$1/;
-    $time_c = $secs + $mins*60 + $hours*3600; }
+    sub _time {
+	if($time_c == 0) {
+	    return; }
+	print "Запись временной метки..." if ($debug);
+	if ($serial == 0) {
+	    $version = $ver + 1;
+	    $timesave = 1;
+	    $lasttime = $time_c;
+	    _resume_config();
+	    _curl("v1/watching/marktime?id=$id&time=$time_c&video=$version");
+	}              # запись временной метки
+	
+	else{
+	    $timesave = 1;
+	    $lasttime = $time_c;
+	    _resume_config();
+	    _curl("v1/watching/marktime?id=$id&time=$time_c&season=$seasonnum&video=$seria");
+	}               # запись временной метки для сериала
+    }
+    sub _timeconv {
+	$secs = $time;
+	$mins = $time;
+	$hours = $time;
+	$secs =~ s/.*:.*:(.*)/$1/;
+	$mins =~ s/.*:(.*):.*/$1/;
+	$hours =~ s/(.*):.*:.*/$1/;
+	$time_c = $secs + $mins*60 + $hours*3600; }
